@@ -1,0 +1,1 @@
+{"control":"live","state":"charge","charge_rate":40,"adaptive":true,"rate_now":20,"rate_restore":null,"blocked":"","allow_export":true,"export_periods":[],"exporting":false,"wanted":true,"updated":1795864925.8270843,"periods":[{"from":1795864500.0,"to":1795865400.0},{"from":1795870800.0,"to":1795875300.0}],"next_change":1795865400.0,"events":[]}
