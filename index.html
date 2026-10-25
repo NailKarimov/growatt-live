@@ -1,0 +1,1075 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inverter live</title>
+<style>
+:root{--bg:#080d18;--panel:#0e1627;--panel2:#121c31;--line:#1f2c47;--text:#e7ecf6;--mut:#8a97b3;
+--blue:#2f9bff;--green:#22c55e;--red:#ff5d5d;--orange:#ffa23a;--purple:#a78bfa;--cyan:#22d3ee;--yellow:#fbbf24}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:15px/1.35 "Segoe UI",system-ui,sans-serif}
+body{min-width:1300px}
+.wrap{max-width:1860px;margin:0 auto;padding:16px 22px 20px}
+header{display:flex;align-items:flex-end;gap:24px;margin-bottom:10px}
+h1{font-size:23px;margin:0}header p{margin:2px 0 0;color:var(--mut);font-size:13px}
+.clock{margin-left:auto;text-align:right}.clock b{font:700 32px "Cascadia Mono",Consolas,monospace;color:#a9d4ff}
+.clock span{display:block;color:var(--mut);font-size:12px}
+.tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.04em;border:1px solid}
+.tag.ok{background:#0f3322;color:#7be3a6;border-color:#1c7a45}.tag.warn{background:#3a2a0a;color:var(--yellow);border-color:#7a5a12}.tag.bad{background:#3a1212;color:#ff9b9b;border-color:#8a2a2a}
+.strip{position:relative;height:46px;border:1px solid var(--line);border-radius:12px;background:var(--panel);margin-bottom:4px;overflow:hidden}
+.strip .seg{position:absolute;top:0;bottom:0;padding:6px 8px;border-right:1px solid #0a1220;font-size:12px;white-space:nowrap;overflow:hidden;color:#cfe1ff}
+.strip .seg b{display:block;font-size:12.5px;color:#fff}
+.stripax{display:flex;justify-content:space-between;color:var(--mut);font-size:11.5px;margin:0 4px 10px}
+.main{display:grid;grid-template-columns:1fr 440px;gap:14px}
+.stage{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:6px}
+.stage svg{position:relative;z-index:1;display:block;width:100%;height:auto}
+.stage svg g>rect:first-child{fill-opacity:.8}
+#bg{position:absolute;left:0;top:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.caption{position:relative;z-index:1}
+.caption{margin:6px 8px 8px;padding:10px 16px;border-radius:12px;background:rgba(8,13,24,.88);border:1px solid var(--line);font-size:17px;min-height:46px}
+.caption.charge{border-color:var(--green)}.caption.export{border-color:var(--orange)}.caption.self{border-color:var(--blue)}
+.side{display:flex;flex-direction:column;gap:12px}
+.box{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:12px 14px}
+.box h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--mut)}
+.phase{display:grid;grid-template-columns:30px 1fr 64px;gap:8px;align-items:center;margin:6px 0}
+.bar{position:relative;height:20px;background:#0a1220;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--green)}
+.bar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--red);box-shadow:0 0 6px var(--red)}
+.num{font:700 15px "Cascadia Mono",Consolas,monospace;text-align:right}
+.badge{padding:6px 12px;border-radius:10px;font-weight:700;font-size:15px;border:1px solid;display:inline-block}
+.badge.charge{background:#0f3322;color:#7be3a6;border-color:#1c7a45}.badge.self{background:#0e2a4a;color:#8fc8ff;border-color:#1f6fb8}
+.badge.export{background:#3a2208;color:#ffc27a;border-color:#a8691f}
+.big{font:700 34px "Cascadia Mono",Consolas,monospace}.unit{color:var(--mut);font-size:14px;margin-left:4px}
+.row{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0;color:var(--mut)}.row b{color:var(--text)}
+.log{font:12.5px "Cascadia Mono",Consolas,monospace;min-height:118px}
+.log div{padding:3px 0;border-bottom:1px dashed #1a2742;color:var(--mut)}.log div.new{color:#d9c8ff}
+.charts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+.chart{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:8px 8px 4px}
+.chart h4{margin:0 0 4px;font-size:12px;color:var(--mut);display:flex;justify-content:space-between;gap:4px}.chart h4 b{color:var(--text);white-space:nowrap}
+.chart canvas{width:100%;height:230px;display:block;cursor:crosshair}
+#charts .chart{margin-top:12px}
+.leg{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:11px;color:var(--mut);margin-bottom:2px}
+.leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:3px;vertical-align:-1px}
+#dtip{position:fixed;display:none;pointer-events:none;z-index:50;background:#0b1424;border:1px solid #5b7bb8;border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.6);white-space:nowrap;max-width:430px}
+#dtip b{font-size:14px}#dtip .k{color:#9fb0cf}#dtip i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}#dtip .hr{border-top:1px solid #24324f;margin:4px 0}#dtip .r{display:flex;justify-content:space-between;gap:18px}
+.sect{margin:22px 0 4px;font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:#9fb0cf}.sect small{text-transform:none;letter-spacing:0;color:var(--mut);font-size:12px;margin-left:8px}
+.ana{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:8px}
+.acard{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:10px 14px}.acard .lab{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.acard .big{font:700 30px/1.15 "Cascadia Mono",Consolas,monospace;color:#e7ecf6}.acard .sub{font-size:12.5px;color:#b9c8e4;margin-top:2px}.acard .bar{height:6px;border-radius:3px;background:#1a2540;margin-top:6px;overflow:hidden}.acard .bar i{display:block;height:100%}
+.ctl{display:flex;align-items:center;gap:14px;margin-top:10px;color:var(--mut);font-size:13px;flex-wrap:wrap}
+.ctl button,.ctl select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer}
+.more{margin-top:12px}.more summary{cursor:pointer;color:var(--mut);padding:6px 2px}
+.more .charts{grid-template-columns:repeat(3,1fr)}
+.two{display:grid;grid-template-columns:3fr 2fr;gap:20px}
+#mtip{position:absolute;display:none;pointer-events:none;z-index:5;background:#0b1424;border:1px solid #5b7bb8;border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.6);white-space:nowrap}
+#mtip b{font-size:14px}#mtip .k{color:#9fb0cf}
+.money{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:2px 0 4px}
+.mcard{border:1px solid #1c7a45;border-radius:14px;background:linear-gradient(180deg,#0f2a1d,#0e1627);padding:10px 18px 12px}
+.mcard .lab{font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;color:#9fe3bb;font-weight:700}
+.mcard .big{font:800 54px/1.05 "Cascadia Mono",Consolas,monospace;color:#2bf06e;text-shadow:0 0 18px rgba(43,240,110,.35)}
+.mcard .sub{font-size:13.5px;color:#b9c8e4;margin-top:2px}
+.msub{font-size:12.5px;color:var(--mut);margin:0 2px 10px}
+.kvg{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:8px 14px;margin:6px 0}
+.kvg div span{display:block;color:var(--mut);font-size:12px}.kvg div b{font-size:17px}.kvg div b.warm{color:var(--orange)}.kvg div b.hot{color:var(--red)}
+.mods{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:10px 0 4px}
+.mod{border:1px solid var(--line);border-radius:10px;background:#0a1220;padding:6px 8px 8px}
+.mod .h{display:flex;justify-content:space-between;align-items:baseline;font-size:12px}.mod .h b{font-size:14px}.mod .h span{color:var(--mut);font-size:11.5px}
+.cells{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-top:5px}
+.cells i{display:block;aspect-ratio:1.5;border-radius:3px;background:#1d6b3c;border:1px solid #2e8d55}
+.cells i.lo{background:#38bdf8;border-color:#bae6fd;box-shadow:0 0 6px #38bdf8}.cells i.hi{background:#fb923c;border-color:#fed7aa;box-shadow:0 0 6px #fb923c}
+.mod .t{font-size:10.5px;color:var(--mut);margin-top:4px;min-height:13px}
+.mod.lo{border-color:#38bdf8}.mod.hi{border-color:#fb923c}.mod.lo.hi{border-color:#e7ecf6}
+.socrange{position:relative;height:22px;border:1px solid var(--line);border-radius:7px;background:#0a1220;margin:6px 0 2px;overflow:hidden}
+.socrange i{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#157a3a,#22c55e);opacity:.9}
+.socrange b{position:absolute;top:2px;font-size:11.5px;transform:translateX(-50%);text-shadow:0 0 3px #000}
+.socrange u{position:absolute;top:0;bottom:0;width:2px;background:#fff}
+.bnote{font-size:12.5px;color:var(--mut);margin-top:4px}
+.views{margin:4px 0 0;font-size:12.5px}.views a{color:var(--mut);text-decoration:none;border:1px solid var(--line);border-radius:14px;padding:2px 10px;margin-right:6px}.views a.on{color:var(--text);border-color:#1f6fb8;background:#0e2a4a}
+.prices{margin-top:12px}
+.prices .head{display:flex;flex-wrap:wrap;gap:6px 26px;align-items:baseline;margin-bottom:6px}
+.prices .head h3{margin:0}.prices .stat{font-size:13px;color:var(--mut)}.prices .stat b{color:var(--text);font-size:15px}
+.prices canvas{width:100%;height:300px;display:block;cursor:crosshair}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}
+.pill{padding:5px 12px;border-radius:20px;font-size:13.5px;font-weight:700;border:1px solid}
+.pill.dry{background:#27204a;color:#cbbcff;border-color:#6c56b8}.pill.live{background:#3a2a0a;color:var(--yellow);border-color:#7a5a12}.pill.bad{background:#3a1212;color:#ff9b9b;border-color:#8a2a2a}
+.pill.charge{background:#0f3322;color:#7be3a6;border-color:#1c7a45}.pill.self{background:#0e2a4a;color:#8fc8ff;border-color:#1f6fb8}.pill.export{background:#3a2208;color:#ffc27a;border-color:#a8691f}
+.prices .hint{font-size:12.5px;color:var(--mut)}
+.foot{margin-top:10px;color:var(--mut);font-size:12.5px;max-width:1700px}
+svg text{font-family:"Segoe UI",system-ui,sans-serif;fill:var(--text)}svg .m{fill:var(--mut)}svg .v{font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1 id="title">Inverter live</h1>
+      <p id="meta">connecting…</p><p id="views" class="views"></p></div>
+    <div class="clock"><b id="clock">--:--:--</b><span id="status"></span></div>
+  </header>
+
+  <div class="money" id="money"></div>
+  <div class="msub" id="msub"></div>
+  <div class="strip" id="strip"></div>
+  <div class="stripax"><span id="ax0"></span><span>what the inverter was doing (from the measured power flows)</span><span>now</span></div>
+
+  <div class="main">
+    <div class="stage">
+      <canvas id="bg"></canvas>
+      <svg viewBox="0 0 1060 720" role="img" aria-label="Live energy flows between the solar panels, the grid, the house and the battery inverter">
+        <defs><filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+        <!-- the mode card: the thing to look at first -->
+        <g><rect x="30" y="20" width="1010" height="120" rx="14" id="modebox" fill="#0e2a4a" stroke="#1f6fb8" stroke-width="2"/>
+          <text x="52" y="46" class="m" font-size="13">Inverter 3 mode now (measured)</text>
+          <text id="t-mode" x="52" y="92" class="v" font-size="34" fill="#8fc8ff">SELF-USE</text>
+          <text id="t-modesub" x="52" y="122" class="m" font-size="15">connecting…</text>
+          <g font-size="13" font-weight="700" text-anchor="middle">
+            <rect id="k-charge" x="700" y="40" width="105" height="36" rx="10" fill="#0a1220" stroke="#1f2c47"/><text x="752" y="63" class="m">CHARGE</text>
+            <rect id="k-self" x="812" y="40" width="105" height="36" rx="10" fill="#0a1220" stroke="#1f2c47"/><text x="864" y="63" class="m">SELF-USE</text>
+            <rect id="k-export" x="924" y="40" width="105" height="36" rx="10" fill="#0a1220" stroke="#1f2c47"/><text x="976" y="63" class="m">SELL</text></g>
+          <text x="700" y="104" font-size="12.5" class="m">inverter priority (reg 3144):</text>
+          <text id="t-prio" x="880" y="104" font-size="13" class="v">–</text>
+          <text id="t-prio2" x="700" y="124" font-size="12" class="m"></text></g>
+        <!-- two inverters, each: PV -> inverter -> AC bus, the meter hangs on the inverter; the AC bus <-> grid, AC bus -> load -->
+        <path id="p2-pv" d="M210,250 H240" fill="none" stroke="#243350" stroke-width="3"/>
+        <path id="p2-inv" d="M460,250 H520" fill="none" stroke="#243350" stroke-width="3"/>
+        <path id="p-pv" d="M210,530 H240" fill="none" stroke="#243350" stroke-width="3"/>
+        <path id="p-inv" d="M460,530 H520" fill="none" stroke="#243350" stroke-width="3"/>
+        <path id="p-house" d="M548,295 H600" fill="none" stroke="#243350" stroke-width="3"/>
+        <path id="p-grid" d="M600,570 H548" fill="none" stroke="#243350" stroke-width="3"/>
+        <g id="particles"></g>
+        <rect x="520" y="170" width="28" height="530" rx="10" fill="#0c3340" stroke="#1b8aa0" stroke-width="1.5"/>
+        <text x="534" y="160" text-anchor="middle" class="m" font-size="13">AC bus</text>
+        <text x="22" y="158" class="m" font-size="13" font-weight="700">Inverter 2 · SPH 10000TL3 · address 2</text>
+        <g><rect x="20" y="165" width="190" height="170" rx="14" fill="#33260c" stroke="#a8791f" stroke-width="1.6"/>
+          <g id="s2-icon-sun"><circle cx="46" cy="192" r="10" fill="#fbbf24"/><g id="s2-rays" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" transform="translate(46,192)">
+            <line x1="0" y1="-15" x2="0" y2="-20"/><line x1="0" y1="15" x2="0" y2="20"/><line x1="-15" y1="0" x2="-20" y2="0"/><line x1="15" y1="0" x2="20" y2="0"/>
+            <line x1="10.6" y1="-10.6" x2="14" y2="-14"/><line x1="-10.6" y1="-10.6" x2="-14" y2="-14"/><line x1="10.6" y1="10.6" x2="14" y2="14"/><line x1="-10.6" y1="10.6" x2="-14" y2="14"/></g></g>
+          <g id="s2-icon-moon" display="none"><path d="M52 182.3 A11 11 0 1 0 52 201.7 A8.6 8.6 0 1 1 52 182.3 Z" fill="#e9eef7"/>
+            <circle cx="60" cy="183" r="1.3" fill="#dbe7ff"/><circle cx="64" cy="192" r="1" fill="#dbe7ff"/><circle cx="58" cy="200" r="1.1" fill="#dbe7ff"/></g>
+          <text x="70" y="187" class="m" font-size="12.5">Solar PV</text><text id="s2-pv" x="196" y="199" text-anchor="end" class="v" font-size="19" fill="#ffd27a">0.0 kW</text>
+          <rect id="s2-pv1-box" x="30" y="217" width="170" height="43" rx="8" fill="#3d2e10" stroke="#6b4f14"/>
+          <text x="38" y="234" class="m" font-size="12">PV1</text><text id="s2-pv1-w" x="192" y="234" text-anchor="end" class="v" font-size="13" fill="#ffd27a">–</text>
+          <text id="s2-pv1-vi" x="38" y="252" font-size="12">– V · – A</text>
+          <rect id="s2-pv2-box" x="30" y="266" width="170" height="43" rx="8" fill="#3d2e10" stroke="#6b4f14"/>
+          <text x="38" y="283" class="m" font-size="12">PV2</text><text id="s2-pv2-w" x="192" y="283" text-anchor="end" class="v" font-size="13" fill="#ffd27a">–</text>
+          <text id="s2-pv2-vi" x="38" y="301" font-size="12">– V · – A</text>
+        </g>
+        <g><rect x="240" y="175" width="220" height="150" rx="14" fill="#0e2a4a" stroke="#1f6fb8" stroke-width="1.8"/>
+          <text x="350" y="198" text-anchor="middle" class="m" font-size="12.5">Inverter 2 · battery</text>
+          <text id="s2-t-bat" x="350" y="234" text-anchor="middle" class="v" font-size="26" fill="#7be3a6">0.0 kW</text>
+          <text id="s2-t-batsub" x="350" y="254" text-anchor="middle" class="m" font-size="12">idle</text>
+          <rect x="262" y="266" width="176" height="14" rx="6" fill="#0a1220" stroke="#1f2c47"/><rect id="s2-soc" x="262" y="266" width="30" height="14" rx="6" fill="#22c55e"/>
+          <text id="s2-t-soc" x="350" y="298" text-anchor="middle" font-size="12" class="m">battery 0 %</text>
+          <text id="s2-t-ac" x="350" y="316" text-anchor="middle" font-size="12" class="m">AC output –</text></g>
+        <path d="M350,325 V350" fill="none" stroke="#8a6d0e" stroke-width="2.5" stroke-dasharray="5 4"/>
+        <g><rect x="265" y="350" width="170" height="68" rx="12" fill="#2f2708" stroke="#8a6d0e" stroke-width="1.6"/>
+          <text x="350" y="371" text-anchor="middle" font-size="12.5" font-weight="700" fill="#f4d35e">Inverter meter</text>
+          <text id="s2-t-m" x="350" y="396" text-anchor="middle" font-size="14" font-weight="700">0 · 0 · 0 A</text>
+          <text x="350" y="411" text-anchor="middle" class="m" font-size="10.5">phase currents L1 · L2 · L3</text></g>
+        <text x="22" y="433" class="m" font-size="13" font-weight="700">Inverter 3 · MOD 12KTL3-XH · address 3</text>
+        <g><rect x="20" y="440" width="190" height="260" rx="14" fill="#33260c" stroke="#a8791f" stroke-width="1.6"/>
+          <g id="icon-sun"><circle cx="46" cy="467" r="10" fill="#fbbf24"/><g id="rays" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" transform="translate(46,467)">
+            <line x1="0" y1="-15" x2="0" y2="-20"/><line x1="0" y1="15" x2="0" y2="20"/><line x1="-15" y1="0" x2="-20" y2="0"/><line x1="15" y1="0" x2="20" y2="0"/>
+            <line x1="10.6" y1="-10.6" x2="14" y2="-14"/><line x1="-10.6" y1="-10.6" x2="-14" y2="-14"/><line x1="10.6" y1="10.6" x2="14" y2="14"/><line x1="-10.6" y1="10.6" x2="-14" y2="14"/></g></g>
+          <g id="icon-moon" display="none"><path d="M52 457.3 A11 11 0 1 0 52 476.7 A8.6 8.6 0 1 1 52 457.3 Z" fill="#e9eef7"/>
+            <circle cx="60" cy="458" r="1.3" fill="#dbe7ff"/><circle cx="64" cy="467" r="1" fill="#dbe7ff"/><circle cx="58" cy="475" r="1.1" fill="#dbe7ff"/></g>
+          <text x="70" y="462" class="m" font-size="12.5">Solar PV</text><text id="t-pv" x="196" y="474" text-anchor="end" class="v" font-size="19" fill="#ffd27a">0.0 kW</text>
+          <rect id="pv1-box" x="30" y="492" width="170" height="43" rx="8" fill="#3d2e10" stroke="#6b4f14"/>
+          <text x="38" y="509" class="m" font-size="12">PV1</text><text id="pv1-w" x="192" y="509" text-anchor="end" class="v" font-size="13" fill="#ffd27a">–</text>
+          <text id="pv1-vi" x="38" y="527" font-size="12">– V · – A</text>
+          <rect id="pv2-box" x="30" y="541" width="170" height="43" rx="8" fill="#3d2e10" stroke="#6b4f14"/>
+          <text x="38" y="558" class="m" font-size="12">PV2</text><text id="pv2-w" x="192" y="558" text-anchor="end" class="v" font-size="13" fill="#ffd27a">–</text>
+          <text id="pv2-vi" x="38" y="576" font-size="12">– V · – A</text>
+          <rect id="pv3-box" x="30" y="590" width="170" height="43" rx="8" fill="#3d2e10" stroke="#6b4f14"/>
+          <text x="38" y="607" class="m" font-size="12">PV3</text><text id="pv3-w" x="192" y="607" text-anchor="end" class="v" font-size="13" fill="#ffd27a">–</text>
+          <text id="pv3-vi" x="38" y="625" font-size="12">– V · – A</text>
+          <rect id="pv4-box" x="30" y="639" width="170" height="43" rx="8" fill="#3d2e10" stroke="#6b4f14"/>
+          <text x="38" y="656" class="m" font-size="12">PV4</text><text id="pv4-w" x="192" y="656" text-anchor="end" class="v" font-size="13" fill="#ffd27a">–</text>
+          <text id="pv4-vi" x="38" y="674" font-size="12">– V · – A</text>
+        </g>
+        <g><rect x="240" y="455" width="220" height="150" rx="14" fill="#0e2a4a" stroke="#1f6fb8" stroke-width="1.8"/>
+          <text x="350" y="478" text-anchor="middle" class="m" font-size="12.5">Inverter 3 · battery</text>
+          <text id="t-bat" x="350" y="514" text-anchor="middle" class="v" font-size="26" fill="#7be3a6">0.0 kW</text>
+          <text id="t-batsub" x="350" y="534" text-anchor="middle" class="m" font-size="12">idle</text>
+          <rect x="262" y="546" width="176" height="14" rx="6" fill="#0a1220" stroke="#1f2c47"/><rect id="soc" x="262" y="546" width="30" height="14" rx="6" fill="#22c55e"/>
+          <text id="t-soc" x="350" y="578" text-anchor="middle" font-size="12" class="m">battery 0 %</text>
+          <text id="t-ac" x="350" y="596" text-anchor="middle" font-size="12" class="m">AC output –</text></g>
+        <path d="M350,605 V630" fill="none" stroke="#8a6d0e" stroke-width="2.5" stroke-dasharray="5 4"/>
+        <g><rect x="265" y="630" width="170" height="68" rx="12" fill="#2f2708" stroke="#8a6d0e" stroke-width="1.6"/>
+          <text x="350" y="651" text-anchor="middle" font-size="12.5" font-weight="700" fill="#f4d35e">Inverter meter</text>
+          <text id="t-m" x="350" y="676" text-anchor="middle" font-size="14" font-weight="700">0 · 0 · 0 A</text>
+          <text x="350" y="691" text-anchor="middle" class="m" font-size="10.5">phase currents L1 · L2 · L3</text></g>
+        <!-- load and grid on the AC bus -->
+        <g><rect x="600" y="170" width="220" height="250" rx="14" fill="#0e2a4a" stroke="#1f6fb8" stroke-width="1.6"/>
+          <text x="614" y="196" class="m" font-size="15" font-weight="700" letter-spacing=".06em">HOUSE</text><text id="h-today" x="806" y="196" text-anchor="end" font-size="14" font-weight="700" fill="#8fc8ff">–</text>
+          <!-- donut: where the house power comes from now -->
+          <g transform="rotate(-90 652 272)">
+            <circle cx="652" cy="272" r="40" fill="none" stroke="#0a1220" stroke-width="13"/>
+            <circle id="h-asun" cx="652" cy="272" r="40" fill="none" stroke="#ffd27a" stroke-width="13" stroke-dasharray="0 999"/>
+            <circle id="h-abat" cx="652" cy="272" r="40" fill="none" stroke="#7be3a6" stroke-width="13" stroke-dasharray="0 999"/>
+            <circle id="h-agrid" cx="652" cy="272" r="40" fill="none" stroke="#cbd5e1" stroke-width="13" stroke-dasharray="0 999"/></g>
+          <text id="t-load" x="652" y="268" text-anchor="middle" class="v" font-size="21" fill="#8fc8ff">0.0</text>
+          <text x="652" y="283" text-anchor="middle" class="m" font-size="11">kW</text>
+          <text id="h-own" x="652" y="298" text-anchor="middle" font-size="10" font-weight="700" fill="#2bf06e"></text>
+          <g>
+            <circle cx="708" cy="230" r="5" fill="#ffd27a"/><text x="718" y="235" class="m" font-size="14">sun</text><text id="h-psun" x="806" y="235" text-anchor="end" class="m" font-size="13"></text><text id="h-sun" x="806" y="254" text-anchor="end" class="v" font-size="16">–</text>
+            <circle cx="708" cy="270" r="5" fill="#7be3a6"/><text x="718" y="275" class="m" font-size="14">battery</text><text id="h-pbat" x="806" y="275" text-anchor="end" class="m" font-size="13"></text><text id="h-bat" x="806" y="294" text-anchor="end" class="v" font-size="16">–</text>
+            <circle cx="708" cy="310" r="5" fill="#cbd5e1"/><text x="718" y="315" class="m" font-size="14">grid</text><text id="h-pgrid" x="806" y="315" text-anchor="end" class="m" font-size="13"></text><text id="h-grid" x="806" y="334" text-anchor="end" class="v" font-size="16">–</text></g>
+          <line x1="614" y1="345" x2="806" y2="345" stroke="#1f3a63"/>
+          <g id="h-phbars"></g></g>        <g><rect id="g-box" x="600" y="440" width="220" height="260" rx="14" fill="#1c2433" stroke="#475569" stroke-width="1.6"/>
+          <text x="614" y="466" class="m" font-size="15" font-weight="700" letter-spacing=".06em">GRID</text><text id="t-gridsub" x="806" y="466" text-anchor="end" font-size="14" font-weight="700" fill="#cbd5e1">idle</text>
+          <text id="t-grid" x="710" y="508" text-anchor="middle" class="v" font-size="34">0.0 kW</text>
+          <text x="614" y="534" class="m" font-size="13">per phase ≈ estimate</text><text x="806" y="534" text-anchor="end" font-size="13" font-weight="700" fill="#ff8f8f">limit 32 A</text>
+          <g font-size="13.5">
+            <text x="614" y="560" font-weight="700" font-size="16">L1</text><text id="g-v1" x="614" y="575" class="m" font-size="12">– V</text>
+            <rect x="648" y="548" width="96" height="14" rx="5" fill="#0a1220" stroke="#1f2c47"/><rect id="g-b1" x="648" y="548" width="0" height="14" rx="5" fill="#22c55e"/><line x1="725" y1="544" x2="725" y2="564" stroke="#ff5d5d" stroke-width="2"/>
+            <text id="g-a1" x="806" y="561" text-anchor="end" class="v" font-size="16">–</text>
+            <text x="614" y="598" font-weight="700" font-size="16">L2</text><text id="g-v2" x="614" y="613" class="m" font-size="12">– V</text>
+            <rect x="648" y="586" width="96" height="14" rx="5" fill="#0a1220" stroke="#1f2c47"/><rect id="g-b2" x="648" y="586" width="0" height="14" rx="5" fill="#22c55e"/><line x1="725" y1="582" x2="725" y2="602" stroke="#ff5d5d" stroke-width="2"/>
+            <text id="g-a2" x="806" y="599" text-anchor="end" class="v" font-size="16">–</text>
+            <text x="614" y="636" font-weight="700" font-size="16">L3</text><text id="g-v3" x="614" y="651" class="m" font-size="12">– V</text>
+            <rect x="648" y="624" width="96" height="14" rx="5" fill="#0a1220" stroke="#1f2c47"/><rect id="g-b3" x="648" y="624" width="0" height="14" rx="5" fill="#22c55e"/><line x1="725" y1="620" x2="725" y2="640" stroke="#ff5d5d" stroke-width="2"/>
+            <text id="g-a3" x="806" y="637" text-anchor="end" class="v" font-size="16">–</text></g>
+          <line x1="616" y1="662" x2="804" y2="662" stroke="#334155"/>
+          <text id="g-price" x="614" y="684" font-size="14" class="m">price –</text><text id="g-cost" x="806" y="684" text-anchor="end" font-size="15" font-weight="700">–</text></g>
+        <!-- energy counters (inverter 3) -->
+        <g><rect x="835" y="170" width="205" height="530" rx="14" fill="#0e1627" stroke="#1f2c47" stroke-width="1.4"/>
+          <text x="849" y="196" class="m" font-size="15" font-weight="700" letter-spacing=".06em">ENERGY TODAY</text><text x="1026" y="196" text-anchor="end" class="m" font-size="13">kWh</text>
+          <g id="e-rows"></g>
+          <line x1="851" y1="628" x2="1024" y2="628" stroke="#1f2c47"/>
+          <text x="849" y="651" class="m" font-size="13.5">net from the grid</text><text id="e-net" x="1026" y="651" text-anchor="end" class="v" font-size="16">–</text>
+          <text x="849" y="674" class="m" font-size="13.5">sun ÷ house</text><text id="e-sun" x="1026" y="674" text-anchor="end" class="v" font-size="16" fill="#ffd27a">–</text>
+          <text x="849" y="693" class="m" font-size="11.5">since midnight</text></g>      </svg>
+      <div class="caption" id="caption">Waiting for the first reading…</div>
+    </div>
+
+    <aside class="side">
+      <div class="box"><h3>Current per phase</h3>
+        <div class="phase"><span>L1</span><div class="bar"><i id="b1"></i></div><span class="num" id="a1">0 A</span></div>
+        <div class="phase"><span>L2</span><div class="bar"><i id="b2"></i></div><span class="num" id="a2">0 A</span></div>
+        <div class="phase"><span>L3</span><div class="bar"><i id="b3"></i></div><span class="num" id="a3">0 A</span></div>
+        <div class="row" style="margin-top:8px"><span style="font-size:12px">↑ output of inverter 3 only (does not include the house)</span></div>
+        <div class="phase"><span>Grid</span><div class="bar"><i id="b4"></i><u class="lim"></u></div><span class="num" id="a4">0 A</span></div>
+        <div class="row"><span style="font-size:12px">↑ grid current per phase, <b>estimated</b> from the import power if the 3 phases share equally (the site meter is not read yet). Red line = site limit <b id="limtxt">32 A</b></span></div></div>
+      <div class="box"><h3>Inverter state</h3>
+        <div><span class="big" id="kw">0.0</span><span class="unit" id="kwu">kW</span></div>
+        <div style="margin:8px 0"><span class="badge self" id="badge">–</span></div>
+        <div class="row"><span>battery</span><b id="socv">– %</b></div>
+        <div class="row"><span>grid</span><b id="gimp">– kW</b></div>
+        <div class="row"><span>frequency</span><b id="fac">– Hz</b></div></div>
+      <div class="box"><h3>Event log</h3><div class="log" id="log"></div></div>
+    </aside>
+  </div>
+
+  <div class="box" id="batbox" style="margin-top:12px">
+    <div class="head" style="display:flex;flex-wrap:wrap;gap:6px 26px;align-items:baseline;margin-bottom:6px"><h3 style="margin:0">Batteries</h3><span class="stat" style="font-size:13px;color:var(--mut)">what the inverters report about their batteries (the battery management system, BMS)</span></div>
+    <div class="two">
+      <div><div style="font-weight:700;margin-bottom:2px">Inverter 3 · MOD · stack of 12 modules</div>
+        <div class="kvg" id="b3-kv"></div><div class="socrange" id="b3-range"></div><div class="mods" id="b3-mods"></div><div class="bnote" id="b3-note"></div></div>
+      <div><div style="font-weight:700;margin-bottom:2px">Inverter 2 · SPH · battery</div>
+        <div class="kvg" id="b2-kv"></div><div class="bnote" id="b2-note"></div></div>
+    </div>
+  </div>
+
+  <div class="box prices" id="pbox">
+    <div class="head"><h3>Electricity price · Latvia · today and tomorrow</h3>
+      <span class="stat" id="pnow"></span><span class="stat" id="ptoday"></span><span class="stat" id="ptomorrow"></span></div>
+    <div class="pills" id="ppills"></div>
+    <div class="pills" id="cpills" title="The program can switch the inverter by this plan. It is OFF unless inverter_live.py was started with --control."></div>
+    <canvas id="pchart"></canvas>
+    <canvas id="plchart" style="height:74px;cursor:default;margin-top:6px"></canvas>
+    <div class="ctl" id="plctl" style="margin-top:6px">
+      <label title="Total hours of charging per day, placed at the cheapest times (for today only the share of the day that is left). A proposal only: nothing is sent to the inverter.">charge hours per day <input type="range" id="plh" min="0" max="10" step="0.5" value="3"> <b id="plhv"></b></label>
+      <label title="The charge hours may be split into this many separate periods (each at least 1 hour), so the cheapest hours of the day are used even when they are far apart.">split into up to <input type="range" id="plm" min="1" max="6" step="1" value="4"> <b id="plmv"></b></label>
+      <label title="Never charge in a quarter-hour that costs more than this.">price limit <input type="range" id="plb" min="20" max="400" step="5" value="200"> <b id="plbv"></b></label>
+      <label title="Periods with a price above this limit (at least one hour) are sent to the program, which switches the inverter to Grid First and discharges the battery into the grid (only when it was started with --allow-export). Grid First is new and not proven on the site yet."><input type="checkbox" id="plon"> sell above (Grid First) <input type="range" id="pls" min="100" max="500" step="10" value="300"> <b id="plsv"></b></label>
+      <span class="hint" id="phint">hover a bar for the exact price · € per kWh, without VAT and grid fees (Elering) · plan = proposal only</span>
+    </div>
+  </div>
+
+  <div class="box prices" id="mbox">
+    <div class="head"><h3>Optimizer · the cheapest plan for the next day or two</h3><span class="stat" id="mhead"></span></div>
+    <div class="pills" id="mpills"></div>
+    <div id="mwrap" style="position:relative"><canvas id="mchart" style="height:800px;cursor:crosshair"></canvas><div id="mtip"></div></div>
+    <div class="ctl" style="margin-top:6px"><span class="hint" id="mhint">How to read it: the optimizer looks at the prices, the solar forecast, the usual house load of every hour and the battery, and finds when it pays to charge from the grid, to sell, or to let the battery serve the house. Move the mouse over the charts for the numbers of every quarter-hour.</span></div>
+  </div>
+
+  <div class="box prices" id="wbox">
+    <div class="head"><h3>Weather forecast · cloud cover and sun · today and tomorrow</h3><span class="stat" id="wsrc"></span></div>
+    <div class="pills" id="wpills"></div>
+    <canvas id="wchart" style="height:260px"></canvas>
+    <div class="ctl" style="margin-top:6px"><span class="hint" id="whint">hover the chart for the exact value · yellow = sun that can be expected (clear-sky curve × (1 − clouds)), grey bars = cloud cover, dashed = clear sky</span></div>
+  </div>
+
+  <div class="sect">Analysis of today<small>calculated from the readings: where the energy comes from and what it costs (move the mouse over a chart for the numbers)</small></div>
+  <div class="ana" id="ana"></div>
+  <div id="charts"></div>
+  <div id="dtip"></div>
+
+  <div class="ctl">
+    <button id="bplay">Freeze</button>
+    <label>top strip window <select id="swin"><option value="300">5 min</option><option value="900" selected>15 min</option><option value="1800">30 min</option><option value="7200">2 h</option></select></label>
+    <label title="The animation behind the diagram follows the weather forecast; pick a state to see how it looks.">background <select id="sky"><option value="auto" selected>from the forecast</option><option value="clear">sun</option><option value="partly">sun and clouds</option><option value="cloudy">clouds</option><option value="rain">rain</option><option value="snow">snow</option><option value="storm">thunderstorm</option><option value="night">night, moon</option></select></label> <span id="skyinfo" class="hint"></span>
+    <span>Read-only: this page only shows what <code>inverter_live.py</code> reads from the inverter.</span>
+  </div>
+
+
+  <div class="foot">Real measurements of one MOD TL3-XH inverter (registers 3000-3180). Grid, load and charge power are the inverter's own view of the site connection, the SDM630 site meter is not read yet,
+    so the figures need not add up exactly. The mode is derived from the measured power flows (CHARGE from grid = the battery charges while the grid delivers power; SELL = power flows to the grid);
+    the schedule word is the inverter's own priority register 3144 (Load First / Battery First / Grid First).</div>
+</div>
+
+<script>
+/* read-only snapshot: every /api/<name> request is answered from api/<name>.json, every write is refused */
+window.SNAPSHOT = {"taken": 1793474427, "every": 15};
+(function () {
+  const real = window.fetch.bind(window);
+  window.fetch = function (url, opt) {
+    if (opt && opt.method && opt.method.toUpperCase() !== "GET") return Promise.resolve(new Response("{}", {status: 403}));
+    const m = /^\/api\/([\w-]+)/.exec(String(url));
+    return real(m ? "api/" + m[1] + ".json" : url, {cache: "no-store"});
+  };
+  addEventListener("DOMContentLoaded", function () {
+    const b = document.createElement("div");
+    b.style.cssText = "position:sticky;top:0;z-index:99;padding:6px 12px;background:#17324d;color:#cfe6ff;font:13px system-ui;text-align:center";
+    const when = new Date(window.SNAPSHOT.taken * 1000);
+    b.textContent = "Snapshot of " + when.toLocaleString() + " - read-only, refreshed about every " + window.SNAPSHOT.every + " minutes";
+    document.body.prepend(b);
+  });
+})();
+</script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+/* page variants (the server injects window.VIEW by the port): "inverter" = inverter only, "prices" = + electricity prices, "full" = + weather */
+const VIEW = window.VIEW || "full", SHOW_PRICES = VIEW !== "inverter", SHOW_WEATHER = VIEW === "full";
+if (!SHOW_PRICES) { $("pbox").style.display = "none"; $("mbox").style.display = "none"; }
+if (!SHOW_WEATHER) { $("wbox").style.display = "none"; $("bg").style.display = "none"; $("sky").parentNode.style.display = "none"; $("skyinfo").style.display = "none"; }
+{ const names = {inverter: "inverter only", prices: "inverter + prices", full: "inverter + prices + weather"}, P = window.PORTS || {};
+  document.title = "Inverter live · " + names[VIEW]; $("title").textContent = "Inverter live · " + names[VIEW];
+  $("views").innerHTML = Object.keys(names).filter(v => P[v]).map(v => `<a class="${v === VIEW ? "on" : ""}" href="http://${location.hostname}:${P[v]}/">${names[v]} · :${P[v]}</a>`).join(""); }
+const LIMIT_A = 32, SCALE_A = 40;                    // site limit per phase, full width of the current bars
+const MODECOL = {charge: "#22c55e", self: "#2f9bff", export: "#ffa23a"};
+const PRIO = ["Load First", "Battery First", "Grid First"];
+let data = {samples: [], events: [], errors: 0, done: false, seconds: 60, t0: 0, device: ""};
+// The battery power registers 3178 / 3180 of the MOD inverter show only about 46 % of the real power (the SOC of the 60 kWh battery changes 2.17 times faster than their energy says),
+// so every battery power is multiplied by BAT_K (sent by the server as bat_k) when a reading enters the page.
+let BAT_K = 1;
+const scaleBattery = s => { if (!s._k) { s._k = 1; if (typeof s.pchr === "number") s.pchr *= BAT_K; if (typeof s.pdis === "number") s.pdis *= BAT_K; } return s; };
+let frozen = null, winS = 900, logged = 0, lastKey = "", pendKey = "", pendN = 0, seenEvents = 0;
+const fmtKw = w => (w / 1000).toFixed(1) + " kW";
+
+/* ------------------------------------------------ what is the inverter doing? */
+// The grid import/export figures of the inverter jitter by a few hundred watts around zero (its own regulation),
+// so the mode is decided on the mean of the last SMOOTH readings, and only a clear export counts as selling.
+const SMOOTH = 5, EXPORT_W = 400;
+function smooth(S, i) {
+  const w = S.slice(Math.max(0, i - SMOOTH + 1), i + 1), m = k => w.reduce((a, s) => a + s[k], 0) / w.length;
+  return {ppv: m("ppv"), load: m("load"), grid_in: m("grid_in"), grid_out: m("grid_out"), pchr: m("pchr"), pdis: m("pdis"), soc: S[i].soc, i1: S[i].i1, i2: S[i].i2, i3: S[i].i3};
+}
+function classify(s) {
+  const chg = s.pchr, dis = s.pdis, imp = s.grid_in, exp = s.grid_out;
+  if (exp > EXPORT_W && dis > 200) return {key: "export", label: "DISCHARGE TO GRID", sub: "the battery sells energy to the grid (Grid First)", fine: "discharge-grid"};
+  if (exp > EXPORT_W) return {key: "export", label: "SELLING PV SURPLUS", sub: "more sun than the house needs, the rest goes to the grid", fine: "sell-pv"};
+  if (chg - Math.max(0, s.ppv - s.load) > 300 && imp > 300) return {key: "charge", label: "CHARGING FROM THE GRID", sub: "the battery is charged with energy bought from the grid (Battery First)", fine: "charge-grid"};
+  if (chg > 200) return {key: "self", label: "SELF-USE · PV charges the battery", sub: "the sun covers the house, the surplus fills the battery", fine: "charge-pv"};
+  if (dis > 200) return {key: "self", label: "SELF-USE · battery covers the house", sub: "the battery discharges to the house, nothing is exported", fine: "discharge-house"};
+  return {key: "self", label: "SELF-USE", sub: imp > 300 ? "the grid and the sun cover the house, the battery is idle" : "the house is covered by the sun, the battery is idle", fine: "idle"};
+}
+const CAP = {
+  "charge-grid": s => `Charging from the grid: the battery takes ${fmtKw(s.pchr)} while the house uses ${fmtKw(s.load)}. Grid import ${fmtKw(s.grid_in)}, worst phase ${Math.max(s.i1, s.i2, s.i3).toFixed(1)} A of ${LIMIT_A} A.`,
+  "charge-pv": s => `The sun (${fmtKw(s.ppv)}) covers the house (${fmtKw(s.load)}) and the surplus charges the battery with ${fmtKw(s.pchr)}.`,
+  "discharge-house": s => `The battery gives ${fmtKw(s.pdis)} to the house (${fmtKw(s.load)}). The grid supplies ${fmtKw(s.grid_in)}.`,
+  "discharge-grid": s => `The battery gives ${fmtKw(s.pdis)}, ${fmtKw(s.grid_out)} of it goes to the grid.`,
+  "sell-pv": s => `PV ${fmtKw(s.ppv)} is more than the house needs (${fmtKw(s.load)}): ${fmtKw(s.grid_out)} goes to the grid.`,
+  "idle": s => `Battery idle at ${s.soc} %. House ${fmtKw(s.load)}, PV ${fmtKw(s.ppv)}, grid import ${fmtKw(s.grid_in)}.`
+};
+
+/* ------------------------------------------------ particles on the flow paths */
+const NS = "http://www.w3.org/2000/svg";
+const FLOWS = {pv2: {path: "p2-pv", color: "#ffd27a", kw: s => s.s2_ppv || 0}, inv2: {path: "p2-inv", color: "#7be3a6", kw: s => s.s2_pac || 0},
+               pv: {path: "p-pv", color: "#ffd27a", kw: s => s.ppv}, inv: {path: "p-inv", color: "#7be3a6", kw: s => s.pac},     // PV -> inverter -> AC bus
+               grid: {path: "p-grid", color: "#cbd5e1", kw: s => s.grid_in - s.grid_out}, house: {path: "p-house", color: "#8fc8ff", kw: s => s.load}};   // grid -> AC bus -> house
+Object.values(FLOWS).forEach(f => { f.el = $(f.path); f.len = f.el.getTotalLength(); f.parts = []; f.acc = 0; });
+function moveParticles(dt, s) {
+  Object.values(FLOWS).forEach(f => {
+    const kw = s ? f.kw(s) / 1000 : 0, dir = kw >= 0 ? 1 : -1;
+    f.acc += dt * Math.min(9, Math.abs(kw) * 1.6);
+    while (f.acc >= 1) { f.acc -= 1; const c = document.createElementNS(NS, "circle"); c.setAttribute("r", 4.5); c.setAttribute("fill", dir > 0 ? f.color : "#ffa23a");
+      c.setAttribute("filter", "url(#glow)"); $("particles").appendChild(c); f.parts.push({c, x: dir > 0 ? 0 : f.len, dir}); }
+    f.parts = f.parts.filter(p => { p.x += dt * 130 * p.dir; if (p.x < 0 || p.x > f.len) { p.c.remove(); return false; }
+      const pt = f.el.getPointAtLength(p.x); p.c.setAttribute("cx", pt.x); p.c.setAttribute("cy", pt.y); return true; });
+  });
+}
+
+/* ------------------------------------------------ the whole day, one chart per row (one point per minute, from /api/day) */
+const PUB = !!window.SNAPSHOT;                       // the public snapshot shows no money
+const STORE_KWH = 60;                                 // inverter 3: 12 modules of 5 kWh
+const kwhOf = soc => (soc / 100 * STORE_KWH).toFixed(1);      // energy left in the inverter 3 battery
+const STORE2_KWH = 20.48;                                          // inverter 2 (SPH): 8 x ARK 2.5H of 2.56 kWh (owner, 2026-10-31)
+const kwh2Of = soc => (soc / 100 * STORE2_KWH).toFixed(1);
+const cents = v => v === null || v === undefined ? "–" : (v * 100).toFixed(2) + " c/kWh";
+const priceRow = p => p.price === null || p.price === undefined ? "" : `<div class="hr"></div><div class="r"><span class="k">spot price</span><b>${cents(p.price)}</b></div>`;
+const DAYCH = [
+  {t: "Where the house power comes from, kW", head: "Analysis", stack: true, u: "kW", k: [["h_pv", "the sun directly", "#ffd27a"], ["h_bat", "the battery", "#7be3a6"], ["h_grid", "the grid", "#cbd5e1"]], div: 1000, d: 1, min: 0,
+   x: p => { const t = p.h_pv + p.h_bat + p.h_grid; if (t < 1) return ""; return `<div class="hr"></div><div class="r"><span class="k">self-sufficient right now</span><b>${Math.round((p.h_pv + p.h_bat) / t * 100)} %</b></div>`; }},
+  {t: "Energy so far today, kWh", u: "kWh", k: [["c_load", "house used", "#8fc8ff"], ["c_pv", "sun produced", "#ffd27a"], ["c_buy", "bought from the grid", "#ff7b7b"], ["c_sold", "sold to the grid", "#ffa23a"], ["c_chg", "into the batteries", "#7be3a6"], ["c_dis", "out of the batteries", "#22d3ee"]], d: 1, min: 0,
+   x: p => `<div class="hr"></div><div class="r"><span class="k">the house so far was covered by</span><b>${p.c_load > 0.1 ? Math.round((p.c_load - p.c_gridhouse) / p.c_load * 100) : "–"} % own energy</b></div>`},
+  ...(PUB ? [] : [{t: "Money so far today, € (spot price; bought at the price, sold at 90 %)", u: "€", k: [["c_eb", "bought", "#ff7b7b"], ["c_es", "sold", "#2bf06e"], ["c_net", "net (sold − bought)", "#e7ecf6"]], d: 3,
+   x: p => `<div class="hr"></div><div class="r"><span class="k">average paid so far</span><b>${p.c_buy > 0.05 ? cents(p.c_eb / p.c_buy) : "–"}</b></div>` + priceRow(p)}]),
+  {t: "House load, grid and PV, kW", head: "All measurements", k: [["load", "house load", "#8fc8ff"], ["gridnet", "grid (− = export)", "#cbd5e1"], ["ppv", "PV inverter 3", "#ffd27a"], ["s2_ppv", "PV inverter 2", "#fb923c"]], div: 1000, d: 1, u: "kW",
+   x: p => { if (p.gridnet === null || p.gridnet === undefined || p.price === null || p.price === undefined) return priceRow(p); const eph = p.gridnet / 1000 * p.price;
+     return priceRow(p) + `<div class="r"><span class="k">${eph >= 0 ? "the grid costs now" : "selling earns now (at 90 %)"}</span><b>${(Math.abs(eph) * (eph >= 0 ? 1 : 0.9) * 100).toFixed(2)} c/h</b></div>`; }},
+  {t: "Battery power, kW (− = discharge)", k: [["batnet", "inverter 3", "#7be3a6"], ["bat2net", "inverter 2", "#22d3ee"]], div: 1000, d: 1, u: "kW",
+   x: p => p.mode ? `<div class="hr"></div><div class="k">${p.mode.sub}</div>` + priceRow(p) : priceRow(p)},
+  {t: "Battery charge, %", k: [["soc", "inverter 3", "#7be3a6"], ["s2_soc", "inverter 2", "#22d3ee"]], d: 0, min: 0, max: 100, u: "%",
+   x: p => p.soc === null || p.soc === undefined ? "" : `<div class="hr"></div><div class="r"><span class="k">inverter 3 holds</span><b>${(p.soc / 100 * STORE_KWH).toFixed(1)} kWh</b></div><div class="r"><span class="k">usable above 10 %</span><b>${(Math.max(0, p.soc - 10) / 100 * STORE_KWH).toFixed(1)} kWh</b></div>`},
+  {t: "Inverter AC output, kW", k: [["pac", "inverter 3", "#8fc8ff"], ["s2_pac", "inverter 2", "#a78bfa"]], div: 1000, d: 1, u: "kW"},
+  {t: "Active, reactive and apparent power of inverter 3", k: [["pac", "P active, kW", "#22d3ee"], ["q_var", "Q reactive, kvar", "#f472b6"], ["s_va", "S apparent, kVA", "#fbbf24"]], div: 1000, d: 2, u: ""},
+  {t: "Power factor of inverter 3 (cos φ)", k: [["pf", "cos φ", "#22d3ee"]], d: 2, min: 0, max: 1.05, u: ""},
+  {t: "Current per phase, A (the red line is the site limit; the grid curve is an estimate)", k: [["i1", "inverter 3 L1", "#22d3ee"], ["i2", "inverter 3 L2", "#a78bfa"], ["i3", "inverter 3 L3", "#fbbf24"], ["gridA", "grid ≈ (balanced)", "#ff8fb1"]], d: 1, min: 0, lines: [[LIMIT_A, "#ff5d5d"]], u: "A",
+   x: p => { const w = Math.max(p.gridA || 0, p.i1 || 0, p.i2 || 0, p.i3 || 0); return `<div class="hr"></div><div class="r"><span class="k">worst of these to the ${LIMIT_A} A limit</span><b style="color:${w > LIMIT_A * .9 ? "#ff7b7b" : "#7be3a6"}">${(LIMIT_A - w).toFixed(1)} A left</b></div>`; }},
+  {t: "Phase voltage of inverter 3, V", k: [["v1", "L1", "#22d3ee"], ["v2", "L2", "#a78bfa"], ["v3", "L3", "#fbbf24"]], d: 0, u: "V"},
+  {t: "Grid frequency, Hz", k: [["fac", "f", "#e7ecf6"]], d: 2, u: "Hz"},
+  {t: "Imbalance of inverter 3, % of the mean", k: [["i_unb", "current", "#22d3ee"], ["v_unb", "voltage", "#a78bfa"], ["p_unb", "power", "#fbbf24"]], d: 1, u: "%"},
+  {t: "Battery temperatures, °C", k: [["bat_ta", "inverter 3 · A", "#fb923c"], ["bat_tb", "inverter 3 · B", "#fbbf24"], ["bms_t_avg", "BMS average", "#7be3a6"], ["bms_t_max", "BMS hottest cell", "#ff5d5d"], ["s2_bat_t", "inverter 2", "#22d3ee"]], d: 1, u: "°C"},
+  {t: "Cell voltage of the inverter 3 battery, V", k: [["bms_cell_max", "highest cell", "#fb923c"], ["bms_cell_min", "lowest cell", "#38bdf8"]], d: 3, u: "V",
+   x: p => p.bms_cell_max && p.bms_cell_min ? `<div class="hr"></div><div class="r"><span class="k">spread between cells</span><b>${Math.round((p.bms_cell_max - p.bms_cell_min) * 1000)} mV</b></div>` : ""}];let DAY = {midnight: 0, points: []}, hoverW = null, lastDayDraw = 0, dayQueued = false;
+let LASTPTS = [], CUM = null;
+DAYCH.forEach((c, i) => { const d = document.createElement("div"); d.className = "chart"; c.id = "dc" + i;
+  if (c.head) { const h = document.createElement("div"); h.className = "sect"; h.textContent = c.head; $("charts").appendChild(h); }
+  d.innerHTML = `<h4>${c.t} <b id="${c.id}v"></b></h4><div class="leg">${c.k.map(k => `<span><i style="background:${k[2]}"></i>${k[1]}</span>`).join("")}</div><canvas id="${c.id}"></canvas>`;
+  $("charts").appendChild(d);
+  const cv = d.querySelector("canvas"), at = e => { const r = cv.getBoundingClientRect(); return DAY.midnight + Math.max(0, Math.min(1, (e.clientX - r.left - 44) / (r.width - 44 - 6))) * 86400; };
+  cv.addEventListener("pointermove", e => { hoverW = at(e); scheduleDay(); dayTip(c, e); }); cv.addEventListener("pointerleave", () => { hoverW = null; $("dtip").style.display = "none"; scheduleDay(); }); });
+/* the floating note next to the mouse: the time, the mode of that moment, every curve of the chart with its unit, and a calculation of the chart */
+function dayTip(c, e) {
+  const tip = $("dtip"), pts = LASTPTS; if (!pts.length || hoverW === null) { tip.style.display = "none"; return; }
+  const p = pts.reduce((b, q) => !b || Math.abs(q.w - hoverW) < Math.abs(b.w - hoverW) ? q : b, null);
+  if (!p || Math.abs(p.w - hoverW) > 900) { tip.style.display = "none"; return; }
+  const dv = c.div || 1, num = v => v === null || v === undefined || Number.isNaN(v) ? "–" : (v / dv).toFixed(c.d) + (c.u ? " " + c.u : "");
+  let h = `<b>${new Date(p.w * 1000).toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit"})}</b>` + (p.mode ? ` <b style="color:${MODECOL[p.mode.key]}">${p.mode.label.split(" · ")[0]}</b>` : "") + "<br>";
+  h += c.k.map(k => `<div class="r"><span><i style="background:${k[2]}"></i>${k[1]}</span><b>${num(p[k[0]])}</b></div>`).join("");
+  if (c.stack) { const t = c.k.reduce((a, k) => a + (p[k[0]] || 0), 0); h += `<div class="hr"></div><div class="r"><span class="k">house total</span><b>${num(t)}</b></div>`; }
+  if (c.x) h += c.x(p);
+  tip.innerHTML = h; tip.style.display = "block";
+  let lx = e.clientX + 16, ly = e.clientY + 14; if (lx + tip.offsetWidth > innerWidth - 6) lx = e.clientX - tip.offsetWidth - 16; if (ly + tip.offsetHeight > innerHeight - 6) ly = innerHeight - tip.offsetHeight - 6;
+  tip.style.left = Math.max(4, lx) + "px"; tip.style.top = Math.max(4, ly) + "px";
+}
+let PMAP = null, PMAPSRC = null;
+function priceAt(w) {                                                              // spot price EUR/kWh of the quarter-hour of the moment w (null when unknown)
+  if (typeof PR === "undefined" || !PR || !PR.points) return null;
+  if (PMAPSRC !== PR) { PMAPSRC = PR; PMAP = new Map(PR.points.map(q => [q[0] - q[0] % 900, q[1] / 1000])); }
+  const v = PMAP.get(Math.floor(w) - Math.floor(w) % 900); return v === undefined ? null : v;
+}
+function derive(pts) {                                                             // where the house power comes from, running totals of the day, and the money
+  let prev = null; const c = {load: 0, pv: 0, buy: 0, sold: 0, chg: 0, dis: 0, gridhouse: 0, eb: 0, es: 0, peakA: 0, covered: 0, sun: 0, bat: 0}, g = v => v || 0;
+  pts.forEach(p => {
+    const pv = g(p.ppv) + g(p.s2_ppv), load = g(p.load), dis = g(p.pdis) + g(p.s2_pdis), chg = g(p.pchr) + g(p.s2_pchr);
+    p.h_pv = Math.min(pv, load); p.h_bat = Math.min(dis, Math.max(0, load - p.h_pv)); p.h_grid = Math.max(0, load - p.h_pv - p.h_bat); p.price = priceAt(p.w);
+    const dt = prev ? Math.min(p.w - prev.w, 180) / 3600 : 0, kwh = v => v * dt / 1000;
+    c.load += kwh(load); c.pv += kwh(pv); c.buy += kwh(g(p.grid_in)); c.sold += kwh(g(p.grid_out)); c.chg += kwh(chg); c.dis += kwh(dis); c.gridhouse += kwh(p.h_grid); c.sun += kwh(p.h_pv); c.bat += kwh(p.h_bat);
+    if (p.price !== null) { c.eb += kwh(g(p.grid_in)) * p.price; c.es += kwh(g(p.grid_out)) * p.price * 0.9; }
+    if ((p.gridA || 0) > c.peakA) c.peakA = p.gridA;
+    p.c_load = c.load; p.c_pv = c.pv; p.c_buy = c.buy; p.c_sold = c.sold; p.c_chg = c.chg; p.c_dis = c.dis; p.c_gridhouse = c.gridhouse; p.c_eb = c.eb; p.c_es = c.es; p.c_net = c.es - c.eb;
+    prev = p; });
+  return c;
+}
+function renderAna(c) {
+  if (!c || c.load < 0.05) { $("ana").innerHTML = ""; return; }
+  const pct = v => Math.round(v * 100), own = (c.load - c.gridhouse) / c.load, sun = c.sun / c.load;
+  const card = (lab, big, sub, bar, col) => `<div class="acard"><div class="lab">${lab}</div><div class="big">${big}</div><div class="sub">${sub}</div>${bar === undefined ? "" : `<div class="bar"><i style="width:${Math.max(0, Math.min(100, bar))}%;background:${col}"></i></div>`}</div>`;
+  const rows = [card("Self-sufficiency", pct(own) + " %", `${(c.load - c.gridhouse).toFixed(1)} of ${c.load.toFixed(1)} kWh the house used came from the sun and the batteries`, pct(own), "#2bf06e"),
+    card("Straight from the sun", pct(sun) + " %", `${c.sun.toFixed(1)} kWh · the sun made ${c.pv.toFixed(1)} kWh in total`, pct(sun), "#ffd27a"),
+    card("Bought from the grid", c.buy.toFixed(1) + " kWh", PUB ? "only what is metered at the inverter" : (c.buy > 0.05 ? `${eurBig(c.eb)} · average ${cents(c.eb / c.buy)}` : "–")),
+    card("Sold to the grid", c.sold.toFixed(1) + " kWh", PUB ? "" : (c.sold > 0.05 ? `${eurBig(c.es)} · average ${cents(c.es / c.sold / 0.9)} spot` : "–")),
+    card("Batteries", `↑${c.chg.toFixed(1)} ↓${c.dis.toFixed(1)} kWh`, `about ${(c.dis / STORE_KWH).toFixed(2)} full cycles of ${STORE_KWH} kWh today`),
+    card("Highest grid current", c.peakA.toFixed(1) + " A", `estimated per phase, the limit is ${LIMIT_A} A`, c.peakA / LIMIT_A * 100, c.peakA > LIMIT_A * .9 ? "#ff5d5d" : "#2f9bff")];
+  $("ana").innerHTML = rows.join("");
+}
+function prep(s) {
+  scaleBattery(s);
+  const v = (s.v1 + s.v2 + s.v3) / 3 || 230;
+  s.gridnet = s.grid_in === null || s.grid_in === undefined ? null : s.grid_in - (s.grid_out || 0); s.batnet = s.pchr === null || s.pchr === undefined ? null : s.pchr - s.pdis;
+  s.bat2net = s.s2_pchr === null || s.s2_pchr === undefined ? null : s.s2_pchr - s.s2_pdis; s.gridA = s.gridnet === null ? null : Math.max(0, s.gridnet) / (3 * v);
+  if (!s.mode && s.grid_in !== null && s.grid_in !== undefined) s.mode = classify(s);
+  return s;
+}
+async function loadDay() {
+  try { const d = await (await fetch("/api/day", {cache: "no-store"})).json(); BAT_K = d.bat_k || BAT_K; d.points.forEach(prep); DAY = d; } catch (e) { return; }
+  drawDayCharts();
+}
+function scheduleDay() { if (!dayQueued) { dayQueued = true; requestAnimationFrame(() => { dayQueued = false; drawDayCharts(); }); } }
+function dayPoints() {                                                          // the minutes from the server plus the newest live reading
+  const pts = DAY.points.slice(), lastS = data.samples[data.samples.length - 1];
+  if (lastS && DAY.midnight) { const w = data.t0 + lastS.t; if (!pts.length || w > pts[pts.length - 1].w + 5) pts.push(prep({_k: 1, w, ...Object.fromEntries(DAYCH.flatMap(c => c.k.map(k => k[0])).filter(k => lastS[k] !== undefined).map(k => [k, lastS[k]])), grid_in: lastS.grid_in, grid_out: lastS.grid_out, pchr: lastS.pchr, pdis: lastS.pdis, ppv: lastS.ppv, load: lastS.load, s2_pchr: lastS.s2_pchr, s2_pdis: lastS.s2_pdis})); }
+  CUM = derive(pts); LASTPTS = pts;
+  return pts;
+}
+function drawDayCharts() {
+  lastDayDraw = Date.now(); if (!DAY.midnight) return;
+  const pts = dayPoints(), nowW = Date.now() / 1000, m0 = DAY.midnight;
+  DAYCH.forEach(c => {
+    const cv = $(c.id), r = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+    cv.width = w * r; cv.height = h * r; const x = cv.getContext("2d"); x.scale(r, r);
+    const dv = c.div || 1; let lo = 1e9, hi = -1e9;
+    pts.forEach(p => c.k.forEach(k => { const v = p[k[0]]; if (v !== null && v !== undefined && !Number.isNaN(v)) { if (v / dv < lo) lo = v / dv; if (v / dv > hi) hi = v / dv; } }));
+    if (c.stack) { hi = -1e9; pts.forEach(p => { const t = c.k.reduce((a, k) => a + (p[k[0]] || 0), 0) / dv; if (t > hi) hi = t; }); if (hi < 0.5) hi = 0.5; }
+    (c.lines || []).forEach(l => { if (l[0] > hi) hi = l[0]; });
+    if (lo > hi) { lo = 0; hi = 1; } if (c.min !== undefined) lo = c.min; if (c.max !== undefined) hi = c.max;
+    if (c.max === undefined) { const pad = (hi - lo) * .12 || Math.max(1, Math.abs(hi) * .02); hi += pad; if (c.min === undefined) lo -= pad; }
+    const L = 44, R = 6, T = 10, B = 18, X = ww => L + (w - L - R) * (ww - m0) / 86400, Y = v => T + (h - T - B) * (1 - (v - lo) / (hi - lo));
+    x.font = "11px Segoe UI"; x.lineWidth = 1; x.strokeStyle = "#1f2c47"; x.fillStyle = "#8a97b3";
+    for (let g = 0; g <= 4; g++) { const v = lo + (hi - lo) * g / 4, y = Y(v); x.beginPath(); x.moveTo(L, y); x.lineTo(w - R, y); x.stroke(); x.fillText(v.toFixed(c.d), 2, y + 4); }
+    for (let hh = 0; hh <= 24; hh += 3) { const px = X(m0 + hh * 3600); x.beginPath(); x.moveTo(px, T); x.lineTo(px, h - B); x.strokeStyle = "#16213a"; x.stroke(); x.fillStyle = "#8a97b3"; x.fillText(String(hh).padStart(2, "0"), px - 6, h - 4); }
+    pts.forEach((p, i) => { if (!p.mode) return; const nx = i + 1 < pts.length ? Math.min(pts[i + 1].w, p.w + 180) : p.w + 60;                      // the mode of the moment as a thin band on top
+      x.fillStyle = MODECOL[p.mode.key] + "99"; x.fillRect(X(p.w), T - 8, Math.max(1, X(nx) - X(p.w)), 5); });
+    (c.lines || []).forEach(l => { x.save(); x.setLineDash([5, 4]); x.strokeStyle = l[1]; x.lineWidth = 1.4; x.beginPath(); x.moveTo(L, Y(l[0])); x.lineTo(w - R, Y(l[0])); x.stroke(); x.restore(); });
+    if (c.stack) { const base = pts.map(() => 0);                                                                       // stacked areas: each curve sits on top of the one before
+      c.k.forEach(k => { const up = pts.map((p, i) => base[i] + (p[k[0]] || 0) / dv); x.fillStyle = k[2] + "cc"; x.beginPath();
+        pts.forEach((p, i) => { const px = X(p.w), py = Y(up[i]); i ? x.lineTo(px, py) : x.moveTo(px, py); });
+        for (let i = pts.length - 1; i >= 0; i--) x.lineTo(X(pts[i].w), Y(base[i]));
+        x.closePath(); x.fill(); up.forEach((v, i) => { base[i] = v; }); }); }
+    else c.k.forEach(k => { x.strokeStyle = k[2]; x.lineWidth = 2; x.beginPath(); let pen = false, prev = 0;
+      pts.forEach(p => { const v = p[k[0]]; if (v === null || v === undefined || Number.isNaN(v)) { pen = false; return; }
+        const px = X(p.w), py = Y(v / dv); (pen && p.w - prev < 600) ? x.lineTo(px, py) : x.moveTo(px, py); pen = true; prev = p.w; }); x.stroke(); });
+    if (nowW >= m0 && nowW <= m0 + 86400) { x.strokeStyle = "#ffffff55"; x.lineWidth = 1; x.beginPath(); x.moveTo(X(nowW), T); x.lineTo(X(nowW), h - B); x.stroke(); }
+    // the values: of the newest reading, or of the moment under the mouse
+    let shown = null; if (hoverW !== null) { shown = pts.reduce((b, p) => !b || Math.abs(p.w - hoverW) < Math.abs(b.w - hoverW) ? p : b, null); const px = X(hoverW); x.strokeStyle = "#e7ecf6"; x.beginPath(); x.moveTo(px, T); x.lineTo(px, h - B); x.stroke(); }
+    else shown = pts[pts.length - 1];
+    $(c.id + "v").textContent = shown ? (hoverW !== null ? new Date(shown.w * 1000).toLocaleTimeString("en-GB", {hour: "2-digit", minute: "2-digit"}) + "  " : "") + c.k.map(k => shown[k[0]] === null || shown[k[0]] === undefined ? "–" : (shown[k[0]] / dv).toFixed(c.d)).join(" · ") : "";
+  });
+  if (hoverW === null) renderAna(CUM);
+}
+const fmtSpan =s => s >= 3600 ? (s / 3600).toFixed(s % 3600 ? 1 : 0) + " h" : Math.round(s / 60) + " min";
+
+/* ------------------------------------------------ the mode strip */
+function drawStrip(S, t0, t1) {
+  const el = $("strip"); el.innerHTML = ""; if (!S.length) return;
+  const runs = []; S.forEach((s, i) => { const key = s.mode.key; const r = runs[runs.length - 1];
+    if (r && r.key === key) r.to = s.t; else runs.push({key, from: i ? S[i - 1].t : s.t, to: s.t, label: s.mode.key === "charge" ? "Charge from grid" : s.mode.key === "export" ? "Sell to grid" : "Self-use"}); });
+  runs.forEach(r => { const a = Math.max(r.from, t0), b = Math.min(r.to, t1); if (b <= a) return;
+    const d = document.createElement("div"); d.className = "seg"; const wp = (b - a) / (t1 - t0) * 100;
+    d.style.left = ((a - t0) / (t1 - t0) * 100) + "%"; d.style.width = wp + "%"; d.style.background = MODECOL[r.key] + "33"; d.style.borderTop = "3px solid " + MODECOL[r.key];
+    d.innerHTML = wp > 9 ? `<b>${r.label}</b>${fmtSpan(b - a)}` : ""; el.appendChild(d); });
+}
+
+/* ------------------------------------------------ the money: what the energy that went into the grid was worth (ledger.py) */
+const eurBig = v => (v || 0).toLocaleString("en-GB", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " €";
+async function loadLedger() {
+  let L; try { L = await (await fetch("/api/ledger", {cache: "no-store"})).json(); } catch (e) { return; }
+  const card = (lab, d, note) => `<div class="mcard"><div class="lab">${lab}</div><div class="big">${eurBig(d.sold_eur)}</div><div class="sub">${d.sold_kwh.toFixed(1)} kWh sold${note ? " · " + note : ""}</div></div>`;
+  const price = `at ${(L.export_factor * 100).toFixed(0)} % of the spot price` + (L.export_fee ? ` − ${L.export_fee} €/kWh` : "");
+  const since = L.since ? new Date(L.since + "T00:00:00").toLocaleDateString("en-GB", {day: "numeric", month: "short"}) : "";
+  $("money").innerHTML = card("Sold to the grid · " + L.month.label, L.month, price) + card("Sold to the grid · this year " + L.year.label, L.year, since ? "counted from " + since + ", the first recorded day" : "") + card("Sold to the grid · today", L.today, "");
+  $("msub").textContent = `Energy bought this month: ${eurBig(L.month.bought_eur)} for ${L.month.bought_kwh.toFixed(0)} kWh at the spot price${L.import_fee ? " + " + L.import_fee + " €/kWh" : ""} · by month: ` + L.months.map(m => `${m.month} ${eurBig(m.sold_eur)}`).join(" · ");
+}
+setInterval(loadLedger, 30000); loadLedger();
+
+/* ------------------------------------------------ batteries */
+const CELLS_PER_MODULE = 16, MODULES = 12;                                        // 12 modules in series = 652 V = 12 x 16 cells x 3.4 V (assumption for the module numbers)
+const kv = (label, v, cls) => `<div><span>${label}</span><b class="${cls || ""}">${v}</b></div>`, num = (v, d, u) => v === null || v === undefined || Number.isNaN(v) ? "–" : v.toFixed(d) + (u || "");
+const tcls = v => v > 55 ? "hot" : v > 45 ? "warm" : "";
+function renderBatteries(last) {
+  const has = last.bms_soc !== null && last.bms_soc !== undefined, soc = has ? last.bms_soc : last.soc, net = (last.pchr - last.pdis) / 1000;
+  const alarm = has && (last.bms_err || last.bms_warn || last.bms_fault);
+  $("b3-kv").innerHTML = kv("charge (SOC)", soc + " %" + (typeof soc === "number" ? ` · ${kwhOf(soc)} kWh` : "")) + kv("charge range of the cells", has ? last.bms_soc_min + "–" + last.bms_soc_max + " %" : "–") + kv("health (SOH)", has ? last.bms_soh + " %" : "–")
+    + kv("voltage", num(last.vbat, 1, " V")) + kv("current", num(last.ibat, 1, " A")) + kv("power", (net >= 0 ? "+" : "−") + Math.abs(net).toFixed(1) + " kW")
+    + kv("temperature A / B", `${num(last.bat_ta, 1)} / ${num(last.bat_tb, 1)} °C`, tcls(Math.max(last.bat_ta || 0, last.bat_tb || 0)))
+    + kv("temperature avg / max cell", has ? `${num(last.bms_t_avg, 1)} / ${num(last.bms_t_max, 1)} °C` : "–", has ? tcls(last.bms_t_max) : "")
+    + kv("cell voltage max / min", has ? `${last.bms_cell_max.toFixed(3)} / ${last.bms_cell_min.toFixed(3)} V` : "–")
+    + kv("average cell (stack V ÷ 192)", num(last.vbat / CELLS_PER_MODULE / MODULES, 3, " V"))
+    + kv("cell spread", has ? Math.round((last.bms_cell_max - last.bms_cell_min) * 1000) + " mV" : "–", has && (last.bms_cell_max - last.bms_cell_min) > 0.08 ? "warm" : "")
+    + kv("max charge / discharge", has ? `${last.bms_i_chg.toFixed(1)} / ${last.bms_i_dis.toFixed(1)} A` : "–") + kv("cycles · packs", has ? `${last.bms_cycles} · ${last.bms_packs}` : "–")
+    + kv("BMS alarms", has ? (alarm ? "ALARM" : "none") : "–", alarm ? "hot" : "");
+  const CELLS = CELLS_PER_MODULE * MODULES, where = n => n >= 1 && n <= CELLS ? {m: Math.ceil(n / CELLS_PER_MODULE), c: (n - 1) % CELLS_PER_MODULE} : null;
+  const L = has ? where(last.bms_n_min) : null, H = has ? where(last.bms_n_max) : null, avgModule = last.vbat / MODULES, avgCell = last.vbat / CELLS;
+  $("b3-range").innerHTML = has ? `<i style="left:${last.bms_soc_min}%;width:${Math.max(1, last.bms_soc_max - last.bms_soc_min)}%"></i><u style="left:${soc}%"></u><b style="left:${Math.min(94, Math.max(6, (last.bms_soc_min + last.bms_soc_max) / 2))}%">cells ${last.bms_soc_min}–${last.bms_soc_max} %</b>` : "";
+  $("b3-mods").innerHTML = Array.from({length: MODULES}, (_, k) => { const m = k + 1, isLo = L && L.m === m, isHi = H && H.m === m;
+    const cells = Array.from({length: CELLS_PER_MODULE}, (_, c) => `<i class="${isLo && L.c === c ? "lo" : isHi && H.c === c ? "hi" : ""}" title="module ${m}, cell ${c + 1}${isLo && L.c === c ? ": the lowest cell voltage " + last.bms_cell_min.toFixed(3) + " V" : isHi && H.c === c ? ": the highest cell voltage " + last.bms_cell_max.toFixed(3) + " V" : ""}"></i>`).join("");
+    return `<div class="mod ${isLo ? "lo" : ""} ${isHi ? "hi" : ""}"><div class="h"><b>M${m}</b><span>≈ ${avgModule.toFixed(1)} V</span></div><div class="cells">${cells}</div><div class="t">${isLo && isHi ? "lowest + highest cell" : isLo ? "lowest cell " + (L.c + 1) : isHi ? "highest cell " + (H.c + 1) : "&nbsp;"}</div></div>`; }).join("");
+  $("b3-note").textContent = `12 modules in series, 16 cells each: the stack voltage ÷ 12 gives ≈ ${avgModule.toFixed(1)} V per module and ${avgCell.toFixed(3)} V per cell on average. The BMS reports only the lowest and the highest cell of the whole stack (blue / orange, with their number 1–192 turned into module and cell) and the charge range of the cells (white line = the stack charge). Charge and temperature of a single module or cell are not reported.`;
+  const has2 = last.s2_soc !== null && last.s2_soc !== undefined, net2 = has2 ? (last.s2_pchr - last.s2_pdis) / 1000 : 0;
+  $("b2-kv").innerHTML = kv("charge (SOC)", has2 ? last.s2_soc + " % · " + kwh2Of(last.s2_soc) + " kWh" : "–") + kv("voltage", has2 ? num(last.s2_vbat, 1, " V") : "–") + kv("power", has2 ? (net2 >= 0 ? "+" : "−") + Math.abs(net2).toFixed(1) + " kW" : "–")
+    + kv("temperature", num(last.s2_bat_t, 1, " °C"), tcls(last.s2_bat_t || 0));
+  $("b2-note").textContent = "For this inverter only the stack values above are read so far (the SPH battery registers beyond them are not mapped yet). Per-module values are not available over RS485 either.";
+}
+
+/* ------------------------------------------------ the log */
+function addLog(text, cls) { const d = document.createElement("div"); d.className = cls || ""; d.textContent = text;
+  const log = $("log"); log.insertBefore(d, log.firstChild); while (log.children.length > 7) log.lastChild.remove(); if (cls) setTimeout(() => d.classList.remove(cls), 3500); }
+const hms = d => d.toTimeString().slice(0, 8);
+
+/* ------------------------------------------------ render */
+/* ------------------------------------------------ the house, the grid per phase and the energy of the day (right part of the diagram) */
+const EROWS = [["e_grid", "from the grid", "#ff7b7b"], ["e_exp", "to the grid", "#ffa23a"], ["e_load", "house used", "#8fc8ff"], ["e_pv", "sun produced", "#ffd27a"], ["e_chg", "into the battery", "#7be3a6"], ["e_dis", "out of the battery", "#22d3ee"]];
+$("e-rows").innerHTML = EROWS.map((r, i) => { const y = 228 + i * 66;
+  return `<circle cx="855" cy="${y - 5}" r="6" fill="${r[2]}"/><text x="867" y="${y}" class="m" font-size="14.5">${r[1]}</text>` +
+    `<text id="er-${r[0]}" x="1024" y="${y + 27}" text-anchor="end" class="v" font-size="26" fill="${r[2]}" font-family="Cascadia Mono,Consolas,monospace">–</text>` +
+    `<rect x="849" y="${y + 35}" width="177" height="8" rx="4" fill="#16213a"/><rect id="eb-${r[0]}" x="849" y="${y + 35}" width="0" height="8" rx="4" fill="${r[2]}"/>`; }).join("");
+function renderHouseGrid(s) {
+  const g = v => v || 0, kw = w => (w / 1000).toFixed(1) + " kW";
+  // the house: sun, batteries and grid that cover it now (the sun first, then the batteries, the rest from the grid)
+  const load = g(s.load), pv = g(s.ppv) + g(s.s2_ppv), dis = g(s.pdis) + g(s.s2_pdis);
+  const hs = Math.min(pv, load), hb = Math.min(dis, Math.max(0, load - hs)), hg = Math.max(0, load - hs - hb);
+  const C = 2 * Math.PI * 40; let off = 0;                                                   // the donut: one arc per source, one after the other
+  [["h-asun", hs], ["h-abat", hb], ["h-agrid", hg]].forEach(([id, v]) => { const l = load > 0 ? C * v / load : 0; $(id).setAttribute("stroke-dasharray", l + " " + (C - l)); $(id).setAttribute("stroke-dashoffset", -off); off += l; });
+  const pc = v => load > 50 ? Math.round(v / load * 100) + " %" : "";
+  $("h-sun").textContent = kw(hs); $("h-bat").textContent = kw(hb); $("h-grid").textContent = kw(hg);
+  $("h-psun").textContent = pc(hs); $("h-pbat").textContent = pc(hb); $("h-pgrid").textContent = pc(hg);
+  const used = CUM && CUM.load > 0.05 ? CUM.load : null;                                       // from the readings of the day (the inverter's own house counter does not restart at midnight)
+  $("h-today").textContent = used === null ? "" : used.toFixed(1) + " kWh today";
+  $("t-load").textContent = (load / 1000).toFixed(1);
+  $("h-phbars").innerHTML = [s.p1, s.p2, s.p3].map((v, i) => { const y = 356 + i * 20, kwv = g(v) / 1000, w = Math.min(110, Math.abs(kwv) / 4 * 110);
+    return `<text x="614" y="${y + 10}" font-size="13" font-weight="700">L${i + 1}</text><rect x="638" y="${y}" width="110" height="11" rx="5" fill="#0a1220"/><rect x="638" y="${y}" width="${w}" height="11" rx="5" fill="${kwv < 0 ? "#ffa23a" : "#8fc8ff"}"/>` +
+      `<text x="806" y="${y + 10}" text-anchor="end" font-size="13.5" font-weight="700">${v == null ? "–" : kwv.toFixed(1) + " kW"}</text>`; }).join("");
+  $("h-own").textContent = load > 50 ? Math.round((hs + hb) / load * 100) + "% own" : "";
+  // the grid per phase: only the total is metered at the inverter, so it is split equally over the phases with each phase's voltage
+  const gnet = g(s.grid_in) - g(s.grid_out);
+  [1, 2, 3].forEach(n => { const v = s["v" + n] || 230, a = Math.abs(gnet) / 3 / v, w = Math.min(96, a / SCALE_A * 96);
+    $("g-v" + n).textContent = v.toFixed(0) + " V"; $("g-a" + n).textContent = (gnet < -50 ? "−" : "") + a.toFixed(1) + " A";
+    $("g-b" + n).setAttribute("width", w); $("g-b" + n).setAttribute("fill", gnet < -50 ? "#ffa23a" : a > LIMIT_A ? "#ff5d5d" : a > LIMIT_A - 6 ? "#fbbf24" : "#22c55e"); });
+  $("g-box").setAttribute("stroke", gnet > 50 ? "#94a3b8" : gnet < -50 ? "#ffa23a" : "#475569");
+  const p = typeof priceAt === "function" ? priceAt(Date.now() / 1000) : null;
+  $("g-price").textContent = p === null ? "price –" : (p * 100).toFixed(2) + " c/kWh";
+  const eph = p === null ? null : gnet / 1000 * p * (gnet < 0 ? 0.9 : 1);
+  $("g-cost").textContent = eph === null || Math.abs(gnet) < 50 ? "–" : (gnet > 0 ? "costs " : "earns ") + (Math.abs(eph) * 100).toFixed(2) + " c/h";
+  $("g-cost").setAttribute("fill", gnet > 0 ? "#ff9b9b" : "#2bf06e");
+  // the energy of the day: big numbers and a bar against the biggest of them
+  const mx = Math.max(1, ...EROWS.map(r => g(r[0] === "e_load" ? used : s[r[0]])));
+  EROWS.forEach(r => { const v = r[0] === "e_load" ? used : s[r[0]]; $("er-" + r[0]).textContent = v == null ? "–" : v.toFixed(1); $("eb-" + r[0]).setAttribute("width", 177 * g(v) / mx); });
+  $("e-net").textContent = s.e_grid == null ? "–" : (s.e_grid - g(s.e_exp)).toFixed(1) + " kWh";
+  $("e-sun").textContent = used ? Math.round(g(s.e_pv) / used * 100) + " %" : "–";
+}
+function render() {
+  const all = data.samples, S0 = frozen !== null ? all.slice(0, frozen) : all, last = S0[S0.length - 1];
+  if (!last) return;
+  const m = last.mode, tNow = last.t, t0 = tNow - winS, S = S0.filter(s => s.t >= t0 - 5);
+  $("clock").textContent = hms(new Date((data.t0 + last.t) * 1000));
+  $("status").textContent = frozen !== null ? "frozen" : data.done ? "finished, COM port released" : "live · one reading every ~" + (S0.length > 1 ? (last.t - S0[S0.length - 2].t).toFixed(0) : "2") + " s";
+  const full = data.seconds >= 86400 ? "until stopped" : data.seconds + " s";
+  $("meta").innerHTML = `${data.device} · ${all.length} readings · ${data.errors} failed cycles · polling ${full} · <span class="tag ${data.done ? "warn" : "ok"}">${data.done ? "FINISHED" : "READ-ONLY"}</span>`;
+  const net = last.pchr - last.pdis, gnet = last.grid_in - last.grid_out;
+  $("t-mode").textContent = m.label.split(" · ")[0]; $("t-mode").setAttribute("fill", m.key === "charge" ? "#7be3a6" : m.key === "export" ? "#ffc27a" : "#8fc8ff");
+  $("t-modesub").textContent = (m.label.includes(" · ") ? m.label.split(" · ")[1] + " — " : "") + m.sub;
+  $("modebox").setAttribute("fill", MODECOL[m.key] + "22"); $("modebox").setAttribute("stroke", MODECOL[m.key]);
+  ["charge", "self", "export"].forEach(k => { $("k-" + k).setAttribute("fill", k === m.key ? MODECOL[k] + "44" : "#0a1220"); $("k-" + k).setAttribute("stroke", k === m.key ? MODECOL[k] : "#1f2c47"); });
+  const pr = last.prio; $("t-prio").textContent = pr === undefined ? "–" : (PRIO[pr] || "code " + pr);
+  $("t-prio2").textContent = pr === undefined ? "" : pr === 1 ? "Battery First: the battery may be charged from the grid" : pr === 2 ? "Grid First: the battery may sell to the grid" : "Load First: the battery serves the house";
+  [1, 2, 3, 4].forEach(n => { const v = last["pv" + n + "_v"] || 0, i = last["pv" + n + "_i"] || 0, wv = last["pv" + n + "_w"] || 0, on = v > 5;
+    $("pv" + n + "-vi").textContent = on ? v.toFixed(0) + " V · " + i.toFixed(1) + " A" : "no input"; $("pv" + n + "-w").textContent = on ? (wv / 1000).toFixed(2) + " kW" : "";
+    $("pv" + n + "-box").setAttribute("opacity", on ? 1 : 0.45); $("pv" + n + "-vi").setAttribute("fill", on ? "#e7ecf6" : "#8a97b3"); });
+  { const has = last.s2_ppv !== undefined && last.s2_ppv !== null, f = (v, d) => has && v != null ? v.toFixed(d) : "–", kw = v => has && v != null ? (v / 1000).toFixed(1) : "–";
+    const net2 = has ? last.s2_pchr - last.s2_pdis : 0;
+    $("s2-pv").textContent = kw(last.s2_ppv) + " kW"; $("s2-rays").setAttribute("opacity", has ? Math.min(1, last.s2_ppv / 2000) * 0.8 + 0.1 : 0.2);
+    [1, 2].forEach(n => { const v = has ? last["s2_pv" + n + "_v"] : 0, on = v > 5;
+      $("s2-pv" + n + "-vi").textContent = !has ? "no data" : on ? v.toFixed(0) + " V · " + last["s2_pv" + n + "_i"].toFixed(1) + " A" : "no input";
+      $("s2-pv" + n + "-w").textContent = on ? (last["s2_pv" + n + "_w"] / 1000).toFixed(2) + " kW" : ""; $("s2-pv" + n + "-box").setAttribute("opacity", on ? 1 : 0.45); $("s2-pv" + n + "-vi").setAttribute("fill", on ? "#e7ecf6" : "#8a97b3"); });
+    $("s2-t-bat").textContent = has ? (net2 >= 0 ? "+" : "−") + (Math.abs(net2) / 1000).toFixed(1) + " kW" : "– kW"; $("s2-t-bat").setAttribute("fill", net2 >= 0 ? "#7be3a6" : "#ffc27a");
+    $("s2-t-batsub").textContent = !has ? "no data from inverter 2" : net2 > 50 ? "charging" : net2 < -50 ? "discharging" : "idle";
+    $("s2-soc").setAttribute("width", has ? Math.max(2, 176 * last.s2_soc / 100) : 2); $("s2-t-soc").textContent = "battery " + (has ? last.s2_soc + " % · " + kwh2Of(last.s2_soc) + " kWh" : "– %");
+    $("s2-t-ac").textContent = "AC output " + (has ? (last.s2_pac / 1000).toFixed(1) + " kW" : "–");
+    $("s2-t-m").textContent = has ? [last.s2_i1, last.s2_i2, last.s2_i3].map(v => v.toFixed(0)).join(" · ") + " A" : "– · – · – A"; }
+  renderBatteries(last);
+  $("t-ac").textContent = "AC output " + (last.pac < 0 ? "−" : "") + fmtKw(Math.abs(last.pac)) + (last.pac < 0 ? " (taking from the bus)" : "");
+  $("t-pv").textContent = fmtKw(last.ppv);
+  $("t-grid").textContent = fmtKw(Math.abs(gnet)); $("t-gridsub").textContent = gnet > 50 ? "buying" : gnet < -50 ? "SELLING" : "idle";
+  $("t-grid").setAttribute("fill", gnet < -50 ? "#ffc27a" : "#e7ecf6");
+  $("t-m").textContent = [last.i1, last.i2, last.i3].map(v => v.toFixed(0)).join(" · ") + " A";
+  $("t-bat").textContent = (net >= 0 ? "+" : "−") + (Math.abs(net) / 1000).toFixed(1) + " kW"; $("t-bat").setAttribute("fill", net >= 0 ? "#7be3a6" : "#ffc27a");
+  $("t-batsub").textContent = net > 50 ? "charging" : net < -50 ? "discharging" : "idle";
+  $("soc").setAttribute("width", Math.max(2, 176 * last.soc / 100)); $("t-soc").textContent = "battery " + last.soc + " % · " + kwhOf(last.soc) + " kWh";
+  $("rays").setAttribute("opacity", Math.min(1, last.ppv / 2000) * 0.8 + 0.1);
+  const dark = SKY.state ? (SKY.state.kind === "night" || SKY.state.kind === "storm" || !SKY.state.day) : last.ppv <= 50;      // night: the moon, day: the shining sun
+  setIcon(dark);
+  renderHouseGrid(last);
+  const vAvg = (last.v1 + last.v2 + last.v3) / 3 || 230, gridA = Math.max(0, last.grid_in - last.grid_out) / (3 * vAvg);
+  [last.i1, last.i2, last.i3, gridA].forEach((v, k) => { const bar = $("b" + (k + 1)); bar.style.width = Math.min(100, v / SCALE_A * 100) + "%";
+    bar.style.background = k < 3 ? "#22c55e" : v > LIMIT_A ? "#ff5d5d" : v > LIMIT_A - 6 ? "#fbbf24" : "#22c55e"; $("a" + (k + 1)).textContent = (k < 3 ? "" : "≈ ") + v.toFixed(1) + " A"; });
+  document.querySelectorAll(".bar u.lim").forEach(u => u.style.left = (LIMIT_A / SCALE_A * 100) + "%"); $("limtxt").textContent = LIMIT_A + " A";
+  $("kw").textContent = (net >= 0 ? "+" : "−") + (Math.abs(net) / 1000).toFixed(1); $("kwu").textContent = net >= 0 ? "kW into the battery" : "kW out of the battery";
+  const b = $("badge"); b.className = "badge " + m.key; b.textContent = m.label;
+  $("socv").textContent = last.soc + " % · " + kwhOf(last.soc) + " kWh"; $("gimp").textContent = (gnet >= 0 ? "import " : "export ") + (Math.abs(gnet) / 1000).toFixed(1) + " kW"; $("fac").textContent = last.fac.toFixed(2) + " Hz";
+  const cap = $("caption"); cap.className = "caption " + m.key; cap.textContent = CAP[m.fine](last);
+  const lo = Math.max(0, t0), hi = Math.max(tNow, lo + 30);
+  if (Date.now() - lastDayDraw > 4000) drawDayCharts();                          // the whole-day charts follow the newest reading every few seconds
+  drawStrip(S, hi - winS, hi); $("ax0").textContent = "−" + fmtSpan(winS);
+}
+
+/* ------------------------------------------------ prices (Elering / Nord Pool, Latvia) and the planned mode */
+const RIGA = new Intl.DateTimeFormat("en-GB", {timeZone: "Europe/Riga", hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"});
+const riga = ts => { const o = {}; RIGA.formatToParts(new Date(ts * 1000)).forEach(p => o[p.type] = p.value);
+  return {day: `${o.year}-${o.month}-${o.day}`, label: `${o.day}.${o.month}`, h: +o.hour, m: +o.minute}; };
+let PR = {points: [], error: null}, PRD = null, pgeo = null;
+const eur = v => (v / 1000).toFixed(3);
+const HINT = $("phint").textContent;
+const slotHM = s => String(Math.floor((s % 96) / 4)).padStart(2, "0") + ":" + String((s % 4) * 15).padStart(2, "0");
+const slotEnd = s => s % 96 === 0 ? "24:00" : slotHM(s);
+const PLAN_LBL = {charge: "CHARGE", self: "SELF-USE", export: "SELL"};
+const PLAN = {hours: 3, parts: 4, below: 0.20, sell: 0.30, sellOn: false};
+try { Object.assign(PLAN, JSON.parse(localStorage.getItem("plan") || "{}")); } catch (e) {}
+async function loadPrices() {
+  try { PR = await (await fetch("/api/prices", {cache: "no-store"})).json(); } catch (e) { PR = {points: [], error: "no connection to the server"}; }
+  drawPrices();
+}
+function dayStats(rows) {
+  if (!rows.length) return null;
+  return {avg: rows.reduce((a, b) => a + b.p, 0) / rows.length, lo: Math.min(...rows.map(q => q.p)), hi: Math.max(...rows.map(q => q.p))};
+}
+/* the optimizer (planner.py on the server): the cheapest plan from prices, solar forecast, house load and battery */
+let MODEL = null;
+async function loadModel() {
+  try { MODEL = await (await fetch("/api/model-plan", {cache: "no-store"})).json(); } catch (e) { MODEL = null; }
+  if (MODEL && MODEL.plan) $("plctl").style.display = MODEL.active ? "none" : ""; drawModel(); if (typeof drawPrices === "function") drawPrices();
+}
+const modelByTs = () => new Map(((MODEL && MODEL.plan && MODEL.plan.slots) || []).map(r => [r.t, r]));
+const MCOL = {charge: "#2bf06e", sell: "#ffa31a", self: "#4da3ff"}, MNAME = {charge: "CHARGE from the grid", sell: "SELL to the grid", self: "SELF-USE"};
+let mhover = null;
+const rigaTime = ts => new Date(ts * 1000).toLocaleTimeString("en-GB", {timeZone: "Europe/Riga", hour: "2-digit", minute: "2-digit"});
+const rigaDay = ts => new Date(ts * 1000).toLocaleDateString("en-GB", {timeZone: "Europe/Riga", weekday: "short", day: "numeric", month: "short"});
+function mLayout(h) { const heights = [84, 150, 150, 150], gap = 14, title = 32; let y = 6; return heights.map(hh => { const p = {title: y, top: y + title, h: hh}; y += title + hh + gap; return p; }); }
+function drawModel() {
+  const cv = $("mchart"), r = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight; if (!w) return; cv.width = w * r; cv.height = h * r; const x = cv.getContext("2d"); x.scale(r, r);
+  const pl = MODEL && MODEL.plan;
+  if (!pl || !pl.slots.length) { x.fillStyle = "#a9b8d6"; x.font = "15px Segoe UI"; x.fillText(MODEL && MODEL.error ? "Optimizer: " + MODEL.error : "The optimizer is planning…", 20, 40); $("mpills").innerHTML = ""; return; }
+  const S = pl.slots, t0 = S[0].t, t1 = S[S.length - 1].t + 900, L = 62, R = 62, X = ts => L + (w - L - R) * (ts - t0) / (t1 - t0), P = mLayout(h);
+  const eur = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + " €", per = a => a.map(q => `${rigaDay(q.from).split(",")[0]} ${rigaTime(q.from)}–${rigaTime(q.to)}`).join(", ") || "none";
+  const font = (px, bold) => x.font = (bold ? "bold " : "") + px + "px Segoe UI";
+  const hLine = (p, v, vmin, vmax, col, dash) => { const y = p.top + p.h * (1 - (v - vmin) / (vmax - vmin)); x.save(); if (dash) x.setLineDash([6, 4]); x.strokeStyle = col; x.lineWidth = 1.4; x.beginPath(); x.moveTo(L, y); x.lineTo(w - R, y); x.stroke(); x.restore(); return y; };
+  const axis = (p, vmin, vmax, steps, fmt, side) => { font(12); for (let g = 0; g <= steps; g++) { const v = vmin + (vmax - vmin) * g / steps, y = p.top + p.h * (1 - g / steps); x.strokeStyle = "#26354f"; x.lineWidth = 1; x.beginPath(); x.moveTo(L, y); x.lineTo(w - R, y); x.stroke();
+      x.fillStyle = "#c3d0ea"; x.textAlign = side === "right" ? "left" : "right"; x.fillText(fmt(v), side === "right" ? w - R + 6 : L - 7, y + 4); } x.textAlign = "left"; };
+  const title = (p, text, sub, chips) => { font(14, true); x.fillStyle = "#ffffff"; x.fillText(text, 2, p.title + 18); let cx = 2 + x.measureText(text).width + 14; font(12);
+    (chips || []).forEach(c => { x.fillStyle = c[0]; x.fillRect(cx, p.title + 8, 14, 11); x.fillStyle = "#c3d0ea"; x.fillText(c[1], cx + 19, p.title + 18); cx += 19 + x.measureText(c[1]).width + 16; });
+    x.fillStyle = "#8da0c4"; x.fillText(sub, cx + 4, p.title + 18); };
+  // vertical lines every 3 hours (Riga time) and the date at midnight
+  const hours = []; for (let ts = Math.ceil(t0 / 3600) * 3600; ts <= t1; ts += 3600) { const hh = +new Date(ts * 1000).toLocaleTimeString("en-GB", {timeZone: "Europe/Riga", hour: "2-digit", hourCycle: "h23"}).slice(0, 2); if (hh % 3 === 0) hours.push([ts, hh]); }
+  // panel 1: the mode of every quarter-hour and the price
+  const p1 = P[0], maxPrice = Math.max(...S.map(s => s.price)) * 1.15;
+  title(p1, "1 · What the inverter will do", "white line = electricity price (€ per kWh, right axis)", [[MCOL.charge, "charge from the grid"], [MCOL.sell, "sell to the grid"], [MCOL.self, "self-use: the battery serves the house"]]);
+  S.forEach(s => { x.fillStyle = MCOL[s.mode]; x.globalAlpha = s.mode === "self" ? 0.55 : 0.95; x.fillRect(X(s.t), p1.top, X(s.t + 900) - X(s.t) + 0.6, p1.h); }); x.globalAlpha = 1;
+  const runs = []; S.forEach(s => { const q = runs[runs.length - 1]; if (q && q.mode === s.mode) q.to = s.t + 900; else runs.push({mode: s.mode, from: s.t, to: s.t + 900}); });
+  runs.forEach(q => { if (q.mode !== "self" && X(q.to) - X(q.from) > 70) { font(13, true); x.fillStyle = "#04121f"; x.fillText(MNAME[q.mode].split(" ")[0] + " " + rigaTime(q.from) + "–" + rigaTime(q.to), X(q.from) + 6, p1.top + 22); }
+    x.strokeStyle = "#04121f"; x.lineWidth = 2; x.beginPath(); x.moveTo(X(q.from), p1.top); x.lineTo(X(q.from), p1.top + p1.h); x.stroke(); });
+  x.strokeStyle = "#ffffff"; x.lineWidth = 2.4; x.beginPath(); S.forEach((s, i) => { const px = X(s.t + 450), py = p1.top + p1.h * (1 - s.price / maxPrice); i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+  font(12); x.fillStyle = "#c3d0ea"; x.textAlign = "left"; [0, 0.5, 1].forEach(g => x.fillText((maxPrice * g).toFixed(2), w - R + 6, p1.top + p1.h * (1 - g) + 4));
+  // panel 2: the planned charge of the battery
+  const p2 = P[1]; title(p2, "2 · Battery charge (planned)", "% of the 60 kWh battery; dashed lines: the lowest the battery is used (10 %) and the highest it is charged from the grid (95 %)", []);
+  axis(p2, 0, 100, 4, v => v + " %", "left"); hLine(p2, 10, 0, 100, "#ff6b6b", true); hLine(p2, 95, 0, 100, "#ffd23f", true);
+  const yS = v => p2.top + p2.h * (1 - v / 100); x.beginPath(); x.moveTo(X(S[0].t), yS(0)); S.forEach(s => { x.lineTo(X(s.t), yS(s.soc)); x.lineTo(X(s.t + 900), yS(s.soc)); }); x.lineTo(X(t1), yS(0)); x.closePath();
+  const grd = x.createLinearGradient(0, p2.top, 0, p2.top + p2.h); grd.addColorStop(0, "rgba(43,240,110,.55)"); grd.addColorStop(1, "rgba(43,240,110,.08)"); x.fillStyle = grd; x.fill();
+  x.strokeStyle = "#2bf06e"; x.lineWidth = 3; x.beginPath(); S.forEach((s, i) => { const px = X(s.t + 450), py = yS(s.soc); i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+  // panel 3: the sun and the house
+  const p3 = P[2], maxKw = Math.max(4, ...S.map(s => Math.max(s.pv, s.load))) * 1.12;
+  title(p3, "3 · Sun and house", "kW; yellow = what the panels are expected to give (weather forecast), white line = what the house usually uses at that hour", [["#ffd23f", "solar forecast"], ["#ffffff", "house load"]]);
+  axis(p3, 0, maxKw, 4, v => v.toFixed(0) + " kW", "left"); const yK = v => p3.top + p3.h * (1 - v / maxKw);
+  x.beginPath(); x.moveTo(X(S[0].t), yK(0)); S.forEach(s => { x.lineTo(X(s.t), yK(s.pv)); x.lineTo(X(s.t + 900), yK(s.pv)); }); x.lineTo(X(t1), yK(0)); x.closePath(); x.fillStyle = "rgba(255,210,63,.6)"; x.fill();
+  x.strokeStyle = "#ffffff"; x.lineWidth = 2.6; x.beginPath(); S.forEach((s, i) => { const px = X(s.t + 450), py = yK(s.load); i ? x.lineTo(px, py) : x.moveTo(px, py); }); x.stroke();
+  // panel 4: the grid
+  const p4 = P[3], maxIn = Math.max(4, ...S.map(s => s.import)) * 1.1, maxOut = Math.max(2, ...S.map(s => s.export)) * 1.15, span = maxIn + maxOut, yG = v => p4.top + p4.h * (1 - (v + maxOut) / span);
+  title(p4, "4 · Grid", "kW; red up = we BUY from the grid, orange down = we SELL to the grid", [["#ff4d4d", "buying"], ["#ffa31a", "selling"]]);
+  font(12); for (let g = 0; g <= 4; g++) { const v = -maxOut + span * g / 4, y = yG(v); x.strokeStyle = Math.abs(v) < 0.01 ? "#7f93bb" : "#26354f"; x.lineWidth = Math.abs(v) < 0.01 ? 1.8 : 1; x.beginPath(); x.moveTo(L, y); x.lineTo(w - R, y); x.stroke(); x.fillStyle = "#c3d0ea"; x.textAlign = "right"; x.fillText((v > 0.05 ? "buy " : v < -0.05 ? "sell " : "") + Math.abs(v).toFixed(0) + " kW", L - 7, y + 4); } x.textAlign = "left";
+  S.forEach(s => { const a = X(s.t), bw = X(s.t + 900) - a + 0.6; if (s.import > 0.02) { x.fillStyle = "#ff4d4d"; x.fillRect(a, yG(s.import), bw, yG(0) - yG(s.import)); } if (s.export > 0.02) { x.fillStyle = "#ffa31a"; x.fillRect(a, yG(0), bw, yG(-s.export) - yG(0)); } });
+  // time axis (hours), midnight dividers, "now", the mouse
+  P.forEach((p, i) => hours.forEach(([ts, hh]) => { const px = X(ts); x.strokeStyle = hh === 0 ? "#6c86b8" : "#1c2a44"; x.lineWidth = hh === 0 ? 1.8 : 1; x.beginPath(); x.moveTo(px, p.top); x.lineTo(px, p.top + p.h); x.stroke(); }));
+  const lastP = P[3], axisY = lastP.top + lastP.h + 16; font(12); hours.forEach(([ts, hh]) => { x.fillStyle = "#c3d0ea"; x.fillText(String(hh).padStart(2, "0") + ":00", X(ts) - 16, axisY); if (hh === 0) { x.fillStyle = "#ffffff"; font(12, true); x.fillText(rigaDay(ts), X(ts) + 5, axisY + 17); font(12); } });
+  const nowTs = Date.now() / 1000; if (nowTs >= t0 && nowTs <= t1) { x.strokeStyle = "#ffffff"; x.lineWidth = 2; x.setLineDash([5, 3]); x.beginPath(); x.moveTo(X(nowTs), p1.top); x.lineTo(X(nowTs), lastP.top + lastP.h); x.stroke(); x.setLineDash([]); font(12, true); x.fillStyle = "#ffffff"; x.fillText("▲ now", X(nowTs) - 14, axisY + 33); }
+  if (mhover !== null) { const s = S.find(q => mhover >= q.t && mhover < q.t + 900); if (s) { x.fillStyle = "rgba(255,255,255,.10)"; x.fillRect(X(s.t), p1.top, X(s.t + 900) - X(s.t), lastP.top + lastP.h - p1.top); x.strokeStyle = "#ffffff"; x.lineWidth = 1.6; x.beginPath(); x.moveTo(X(s.t + 450), p1.top); x.lineTo(X(s.t + 450), lastP.top + lastP.h); x.stroke(); } }
+  cv.dataset.t0 = t0; cv.dataset.t1 = t1; cv.dataset.l = L; cv.dataset.r = R;
+  $("mhead").textContent = (MODEL.active ? "the controller FOLLOWS this plan" : "proposal only — the controller follows the page's plan") + " · battery now " + MODEL.soc_start + " % · battery " + MODEL.params.capacity_kwh + " kWh · selling up to " + MODEL.params.sell_kw + " kW";
+  $("mpills").innerHTML = `<span class="pill ${pl.saving > 0 ? "charge" : "self"}">expected cost ${eur(pl.cost_plan)} vs ${eur(pl.cost_base)} with self-use only → ${pl.saving > 0 ? "saves " + pl.saving.toFixed(2) + " €" : (pl.charge.length || pl.sell.length) ? "costs " + (-pl.saving).toFixed(2) + " € more, but keeps the battery above the reserve" : "no gain, self-use stays"} until ${rigaTime(t1)}</span>`
+    + (pl.charge.length ? `<span class="pill charge">charge: ${per(pl.charge)}</span>` : "") + (pl.sell.length ? `<span class="pill export">sell: ${per(pl.sell)}</span>` : "");
+}
+function modelTip(e) {
+  const cv = $("mchart"), tip = $("mtip"); if (!MODEL || !MODEL.plan || !MODEL.plan.slots.length) return;
+  const rc = cv.getBoundingClientRect(), t0 = +cv.dataset.t0, t1 = +cv.dataset.t1, L = +cv.dataset.l, R = +cv.dataset.r, fx = (e.clientX - rc.left - L) / (rc.width - L - R);
+  if (fx < 0 || fx > 1) { mhover = null; tip.style.display = "none"; drawModel(); return; }
+  const ts = t0 + fx * (t1 - t0), s = MODEL.plan.slots.find(q => ts >= q.t && ts < q.t + 900); if (!s) return; mhover = ts;
+  const bat = s.battery > 0.05 ? `<span style="color:#2bf06e">charging ${s.battery.toFixed(1)} kW</span>` : s.battery < -0.05 ? `<span style="color:#ffa31a">discharging ${(-s.battery).toFixed(1)} kW</span>` : "idle";
+  const grid = s.import > 0.05 ? `<span style="color:#ff6b6b">buying ${s.import.toFixed(1)} kW</span>` : s.export > 0.05 ? `<span style="color:#ffa31a">selling ${s.export.toFixed(1)} kW</span>` : "no exchange";
+  tip.innerHTML = `<b>${rigaDay(s.t)} ${rigaTime(s.t)}–${rigaTime(s.t + 900)}</b><br><b style="color:${MCOL[s.mode]}">${MNAME[s.mode]}</b><br><span class="k">price</span> ${s.price.toFixed(3)} €/kWh<br><span class="k">battery</span> ${bat} → <b>${s.soc.toFixed(0)} %</b><br><span class="k">sun (forecast)</span> ${s.pv.toFixed(1)} kW<br><span class="k">house (usual)</span> ${s.load.toFixed(1)} kW<br><span class="k">grid</span> ${grid}`;
+  tip.style.display = "block"; const wr = $("mwrap").getBoundingClientRect(); let lx = e.clientX - wr.left + 16, ly = e.clientY - wr.top + 14; if (lx + tip.offsetWidth > wr.width - 4) lx = e.clientX - wr.left - tip.offsetWidth - 16; if (ly + tip.offsetHeight > wr.height) ly = wr.height - tip.offsetHeight - 4;
+  tip.style.left = lx + "px"; tip.style.top = ly + "px"; drawModel();
+}
+$("mchart").addEventListener("mousemove", modelTip); $("mchart").addEventListener("mouseleave", () => { mhover = null; $("mtip").style.display = "none"; drawModel(); });
+window.addEventListener("resize", drawModel); if (SHOW_PRICES) { setInterval(loadModel, 60000); loadModel(); }
+
+/* the plan: per day the cheapest quarter-hours, in at most PLAN.parts separate periods of at least MIN_PART slots.
+   Dynamic programming over the slots of the day that are still ahead: state = (slots chosen, periods started, length of the running period). */
+const MIN_PART = 4;                                                            // a period is at least one hour: no mode switch for a few cheap quarter-hours
+function cheapest(prices, allowed, Q, M) {
+  const n = prices.length, C = Q + 1, K = M + 1, R = MIN_PART + 1, INF = 1e18, size = (n + 1) * C * K * R;
+  const idx = (i, c, k, r) => ((i * C + c) * K + k) * R + r, dp = new Float64Array(size).fill(INF), par = new Int32Array(size).fill(-1);
+  dp[idx(0, 0, 0, 0)] = 0;
+  for (let i = 0; i < n; i++) for (let c = 0; c <= Q; c++) for (let k = 0; k <= M; k++) for (let r = 0; r < R; r++) {
+    const v = dp[idx(i, c, k, r)]; if (v >= INF) continue;
+    const from = idx(i, c, k, r);
+    if (r === 0 || r >= MIN_PART) { const to = idx(i + 1, c, k, 0); if (v < dp[to]) { dp[to] = v; par[to] = from; } }          // do not charge in this slot
+    if (allowed[i] && c < Q) { let nk = k, nr = Math.min(r + 1, MIN_PART);                                                      // charge in this slot
+      if (r === 0) { if (k >= M) continue; nk = k + 1; nr = 1; }
+      const to = idx(i + 1, c + 1, nk, nr), cost = v + prices[i]; if (cost < dp[to]) { dp[to] = cost; par[to] = from; } }
+  }
+  for (let q = Q; q >= 1; q--) {                                                  // as many slots as possible, up to Q
+    let best = -1; for (let k = 0; k <= M; k++) for (const r of [0, MIN_PART]) { const j = idx(n, q, k, r); if (dp[j] < INF && (best < 0 || dp[j] < dp[best])) best = j; }
+    if (best < 0) continue;
+    const chosen = []; let cur = best;
+    for (let i = n; i > 0; i--) { const prev = par[cur], cc = Math.floor(cur / (K * R)) % C, pc = Math.floor(prev / (K * R)) % C; if (cc !== pc) chosen.push(i - 1); cur = prev; }
+    return chosen;
+  }
+  return [];
+}
+function planModes(all, slot, nowTs) {
+  if (MODEL && MODEL.active && MODEL.plan) {                                    // the optimizer's plan replaces the sliders' plan
+    const by = modelByTs(), m = new Map();
+    all.forEach(q => { const r = by.get(q.ts); if (r && r.mode === "charge") m.set(slot(q), "charge"); else if (r && r.mode === "sell") m.set(slot(q), "export"); });
+    return m;
+  }
+  const mode = new Map(), byDay = {};
+  all.forEach(q => (byDay[q.day] = byDay[q.day] || []).push(q));
+  Object.values(byDay).forEach(rows => {
+    const future = rows.filter(q => q.ts + 900 > nowTs);
+    let quota = Math.round(PLAN.hours * 4 * future.length / Math.max(rows.length, 96));
+    if (quota < 4) quota = 0;                                                  // under an hour in total is not worth a mode switch
+    if (quota > 0) cheapest(future.map(q => q.p), future.map(q => q.p / 1000 <= PLAN.below), quota, PLAN.parts).forEach(i => mode.set(slot(future[i]), "charge"));
+    if (PLAN.sellOn) {                                                         // selling: the quarter-hours above the sell limit, in periods of at least one hour
+      let run = []; const flush = () => { if (run.length >= MIN_PART) run.forEach(q => mode.set(slot(q), "export")); run = []; };
+      future.filter(q => q.p / 1000 >= PLAN.sell).forEach(q => { if (run.length && slot(q) !== slot(run[run.length - 1]) + 1) flush(); run.push(q); }); flush(); }
+  });
+  return mode;
+}
+function planRuns(mode, rowOf, nowSlot) {
+  const runs = [];
+  [...rowOf.keys()].sort((a, b) => a - b).forEach(s => { const m = mode.get(s) || "self", last = runs[runs.length - 1];
+    if (last && last.m === m && last.to === s && s !== Math.ceil(nowSlot)) last.to = s + 1; else runs.push({m, from: s, to: s + 1}); });
+  runs.forEach(rn => { let sum = 0; for (let s = rn.from; s < rn.to; s++) sum += rowOf.get(s).p; rn.avg = sum / (rn.to - rn.from); });
+  return runs;
+}
+function planUi() {
+  $("plh").value = PLAN.hours; $("plm").value = PLAN.parts; $("plmv").textContent = PLAN.parts === 1 ? "1 period" : PLAN.parts + " periods"; $("plb").value = PLAN.below * 1000; $("pls").value = PLAN.sell * 1000; $("plon").checked = PLAN.sellOn;
+  $("plhv").textContent = PLAN.hours + " h"; $("plbv").textContent = PLAN.below.toFixed(2) + " €/kWh"; $("plsv").textContent = PLAN.sell.toFixed(2) + " €/kWh";
+}
+function planSave() { try { localStorage.setItem("plan", JSON.stringify(PLAN)); } catch (e) {} planUi(); drawPrices(); }
+$("plh").oninput = e => { PLAN.hours = parseFloat(e.target.value); planSave(); };
+$("plm").oninput = e => { PLAN.parts = parseInt(e.target.value, 10); planSave(); };
+$("plb").oninput = e => { PLAN.below = parseInt(e.target.value, 10) / 1000; planSave(); };
+$("pls").oninput = e => { PLAN.sell = parseInt(e.target.value, 10) / 1000; planSave(); };
+$("plon").onchange = e => { PLAN.sellOn = e.target.checked; planSave(); };
+
+function drawPrices() {
+  const cv = $("pchart"), r = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return; cv.width = w * r; cv.height = h * r; const x = cv.getContext("2d"); x.scale(r, r);
+  const nowTs = Date.now() / 1000, today = riga(nowTs).day;
+  const rows = PR.points.map(([ts, p]) => Object.assign({ts, p}, riga(ts))).filter(q => q.day >= today);
+  const days = [...new Set(rows.map(q => q.day))].sort().slice(0, 2), tdy = rows.filter(q => q.day === days[0]), tmr = days[1] ? rows.filter(q => q.day === days[1]) : [];
+  const sT = dayStats(tdy), sM = dayStats(tmr), cur = tdy.filter(q => q.ts <= nowTs).pop();
+  $("pnow").innerHTML = cur ? `now <b>${eur(cur.p)}</b> €/kWh` : "";
+  const line = (n, s) => s ? `${n} avg <b>${eur(s.avg)}</b> (${eur(s.lo)}…${eur(s.hi)})` : "";
+  $("ptoday").innerHTML = line("today", sT); $("ptomorrow").innerHTML = sM ? line("tomorrow", sM) : "tomorrow: not published yet (after ~14:00)";
+  const all = tdy.concat(tmr);
+  if (!all.length) { x.fillStyle = "#8a97b3"; x.font = "14px Segoe UI"; x.fillText(PR.error ? "No prices: " + PR.error : "Loading prices…", 20, 40); pgeo = null; PRD = null; drawPlan(); return; }
+  const sorted = all.map(q => q.p).sort((a, b) => a - b), q25 = sorted[Math.floor(sorted.length * .25)], q75 = sorted[Math.floor(sorted.length * .75)];
+  const lo = Math.min(0, sorted[0]), hi = sorted[sorted.length - 1] * 1.1;
+  const L = 44, R = 6, T = 24, B = 18, slot = q => (q.day === days[0] ? 0 : 96) + q.h * 4 + Math.floor(q.m / 15), N = 192;
+  const X = i => L + (w - L - R) * i / N, Y = v => T + (h - T - B) * (1 - (v - lo) / (hi - lo));
+  const nowSlot = tdy.length ? slot(riga(nowTs)) + ((nowTs % 900) / 900) : -1;
+  const rowOf = new Map(all.map(q => [slot(q), q])), runs = planRuns(planModes(all, slot, nowTs), rowOf, nowSlot);
+  x.font = "11px Segoe UI"; x.lineWidth = 1; x.strokeStyle = "#1f2c47"; x.fillStyle = "#8a97b3";
+  for (let g = 0; g <= 4; g++) { const v = lo + (hi - lo) * g / 4, y = Y(v); x.beginPath(); x.moveTo(L, y); x.lineTo(w - R, y); x.stroke(); x.fillText(eur(v), 2, y + 4); }
+  for (let hh = 0; hh <= 48; hh += 3) x.fillText(String(hh % 24).padStart(2, "0"), X(hh * 4) - 6, h - 4);
+  runs.filter(rn => rn.m !== "self").forEach(rn => { const a = X(rn.from), b = X(rn.to), col = MODECOL[rn.m];      // planned windows shaded behind the bars
+    x.fillStyle = col + "30"; x.fillRect(a, T - 8, b - a, h - B - T + 8); x.fillStyle = col; x.fillRect(a, T - 8, b - a, 3); });
+  all.forEach(q => { const i = slot(q), col = q.p <= q25 ? "#22c55e" : q.p >= q75 ? "#ffa23a" : "#2f9bff";
+    x.globalAlpha = i + 1 <= nowSlot ? 0.35 : 0.95; x.fillStyle = col; const y0 = Y(0), y1 = Y(q.p); x.fillRect(X(i), Math.min(y0, y1), Math.max(1, X(i + 1) - X(i) - 0.6), Math.abs(y0 - y1) || 1); });
+  x.globalAlpha = 1;
+  let lastRight = [-1e9, -1e9];                                                   // two rows of labels, so neighbouring periods do not cover each other
+  runs.filter(rn => rn.m !== "self" && rn.to > nowSlot).forEach(rn => { const a = X(rn.from), b = X(rn.to), txt = `${PLAN_LBL[rn.m]} ${slotHM(rn.from)}–${slotEnd(rn.to)}`;
+    x.font = "bold 13px Segoe UI"; const tw = x.measureText(txt).width + 14, tx = Math.min(Math.max(L, (a + b) / 2 - tw / 2), w - R - tw), row = tx > lastRight[0] + 4 ? 0 : 1; lastRight[row] = tx + tw;
+    const ty = T - 4 + row * 26; x.fillStyle = "#0a1220"; x.fillRect(tx, ty, tw, 22); x.strokeStyle = MODECOL[rn.m]; x.strokeRect(tx, ty, tw, 22); x.fillStyle = "#fff"; x.fillText(txt, tx + 7, ty + 16); });
+  x.strokeStyle = "#3a4a70"; x.lineWidth = 1; x.beginPath(); x.moveTo(X(96), 0); x.lineTo(X(96), h - B); x.stroke();
+  x.fillStyle = "#e7ecf6"; x.font = "bold 12px Segoe UI"; x.fillText("Today " + tdy[0].label, L + 4, 12); if (tmr.length) x.fillText("Tomorrow " + tmr[0].label, X(96) + 6, 12);
+  if (nowSlot >= 0) { x.strokeStyle = "#fff"; x.lineWidth = 2; x.beginPath(); x.moveTo(X(nowSlot), 0); x.lineTo(X(nowSlot), h - B); x.stroke(); }
+  pgeo = {L, R, N, w, slotRows: rowOf};
+  const planned = runs.filter(rn => rn.m !== "self" && rn.to > nowSlot);
+  const ch = planned.filter(rn => rn.m === "charge"), chSlots = ch.reduce((a, rn) => a + rn.to - rn.from, 0);
+  const total = ch.length > 1 ? `<span class="pill charge" style="background:#144d30">CHARGE in ${ch.length} periods · ${+(chSlots / 4).toFixed(2)} h in total · ${eur(ch.reduce((a, rn) => a + rn.avg * (rn.to - rn.from), 0) / chSlots)} €/kWh average</span>` : "";
+  $("ppills").innerHTML = planned.length ? total + planned.map(rn => `<span class="pill ${rn.m}">${PLAN_LBL[rn.m]} ${rn.from >= 96 ? "tomorrow " : "today "}${slotHM(rn.from)}–${slotEnd(rn.to)} · ${eur(rn.avg)} €/kWh</span>`).join("")
+    : `<span class="pill self">SELF-USE all the time — no interval is cheap enough</span>`;
+  PRD = {runs, nowSlot, L, R, N};
+  drawPlan();
+  const asPeriods = m => planned.filter(rn => rn.m === m).map(rn => ({from: rowOf.get(rn.from).ts, to: rowOf.get(rn.to - 1).ts + 900}));
+  postPlan(asPeriods("charge"), asPeriods("export"));
+}
+let sentPlan = "";
+function postPlan(periods, exportPeriods) {                       // the controller (inverter_live.py --control) acts on exactly these periods
+  const body = JSON.stringify({periods, export: exportPeriods}); if (body === sentPlan) return; sentPlan = body;
+  fetch("/api/plan", {method: "POST", headers: {"Content-Type": "application/json"}, body}).then(r => { if (!r.ok) sentPlan = ""; }).catch(() => { sentPlan = ""; });
+}
+async function loadControl() {
+  let c; try { c = await (await fetch("/api/control", {cache: "no-store"})).json(); } catch (e) { return; }
+  const hm = ts => ts ? new Date(ts * 1000).toLocaleTimeString("en-GB", {timeZone: "Europe/Riga", hour: "2-digit", minute: "2-digit"}) : "";
+  const next = c.next_change ? (c.state === "charge" ? ` · charging until ${hm(c.next_change)}` : c.state === "export" ? ` · selling until ${hm(c.next_change)}` : ` · next period ${hm(c.next_change)}`) : " · no period planned";
+  const ev = (c.events || []).filter(e => e.kind !== "plan").slice(-1)[0], last = ev ? ` · last: ${ev.text}` : "";
+  const m = {off: ["self", "CONTROL OFF — the plan is only shown, the inverter is not switched"], "dry-run": ["dry", "CONTROL DRY-RUN — decisions are logged, nothing is sent to the inverter" + next],
+    live: ["live", "CONTROL LIVE — the inverter follows the plan" + next + (c.exporting ? " · SELLING (Grid First)" : "")], tripped: ["bad", "CONTROL STOPPED after failed writes — see the log and run inverter_mode.py restore"]}[c.control] || ["self", c.control];
+  const exNext = (c.export_periods || []).find(p => p.to > Date.now() / 1000), exNote = c.control !== "off" && exNext ? (c.allow_export ? `<span class="pill export">SELLING planned ${hm(exNext.from)}–${hm(exNext.to)} (Grid First)</span>` : `<span class="pill self">selling periods are drawn but the program was not started with --allow-export: not switched</span>`) : "";
+  $("cpills").innerHTML = exNote + `<span class="pill ${m[0]}">${m[1]}${c.control === "off" ? "" : c.blocked ? "" : last}</span>` + (c.blocked ? `<span class="pill bad">⚠ charge is wanted now but NOT started: ${c.blocked}</span>` : "");
+}
+if (SHOW_PRICES) { setInterval(loadControl, 5000); loadControl(); }
+function drawPlan() {
+  const cv = $("plchart"), r = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return; cv.width = w * r; cv.height = h * r; const x = cv.getContext("2d"); x.scale(r, r);
+  if (!PRD) return;
+  const {runs, nowSlot, L, R, N} = PRD, X = i => L + (w - L - R) * i / N, H = h - 4;
+  x.font = "11px Segoe UI"; x.fillStyle = "#8a97b3"; x.fillText("plan", 6, H / 2 + 4);
+  runs.forEach(rn => { const a = X(rn.from), b = X(rn.to), col = MODECOL[rn.m]; x.globalAlpha = rn.to <= nowSlot ? 0.4 : 1;
+    x.fillStyle = col + "40"; x.fillRect(a, 0, b - a - 1, H); x.fillStyle = col; x.fillRect(a, 0, b - a - 1, 4);
+    if (b - a > 64) { x.fillStyle = "#fff"; x.font = "bold 14px Segoe UI"; x.fillText(PLAN_LBL[rn.m], a + 6, 26); x.font = "11.5px Segoe UI"; x.fillStyle = "#dbe7ff"; x.fillText(slotHM(rn.from) + "–" + slotEnd(rn.to), a + 6, 44); } });
+  x.globalAlpha = 1; x.strokeStyle = "#3a4a70"; x.lineWidth = 1; x.beginPath(); x.moveTo(X(96), 0); x.lineTo(X(96), H); x.stroke();
+  if (nowSlot >= 0) { x.strokeStyle = "#fff"; x.lineWidth = 2; x.beginPath(); x.moveTo(X(nowSlot), 0); x.lineTo(X(nowSlot), H); x.stroke(); }
+}
+$("pchart").addEventListener("mousemove", e => { if (!pgeo) return; const rc = $("pchart").getBoundingClientRect(), i = Math.floor((e.clientX - rc.left - pgeo.L) / (pgeo.w - pgeo.L - pgeo.R) * pgeo.N), q = pgeo.slotRows.get(i);
+  $("phint").textContent = q ? `${q.label}  ${String(q.h).padStart(2, "0")}:${String(q.m).padStart(2, "0")}  →  ${eur(q.p)} €/kWh  (${q.p.toFixed(1)} €/MWh)` : ""; });
+$("pchart").addEventListener("mouseleave", () => $("phint").textContent = HINT);
+planUi();
+setInterval(loadDay, 60000); loadDay(); window.addEventListener("resize", drawDayCharts);
+window.addEventListener("resize", drawPrices); if (SHOW_PRICES) { setInterval(loadPrices, 300000); setInterval(drawPrices, 30000); loadPrices(); }
+
+/* ------------------------------------------------ weather: cloud cover and expected sun (OpenWeather forecast or Open-Meteo, see weather.py) */
+let WX = {points: [], days: [], error: null}, wgeo = null;
+async function loadWeather() {
+  try { WX = await (await fetch("/api/weather", {cache: "no-store"})).json(); } catch (e) { WX = {points: [], days: [], error: "no connection to the server"}; }
+  drawWeather();
+}
+function drawWeather() {
+  const cv = $("wchart"), r = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return; cv.width = w * r; cv.height = h * r; const x = cv.getContext("2d"); x.scale(r, r);
+  $("wsrc").textContent = WX.source ? `source: ${WX.source} · ${(+WX.lat).toFixed(2)}, ${(+WX.lon).toFixed(2)}` : "";
+  const pts = WX.points || [];
+  if (!pts.length) { x.fillStyle = "#8a97b3"; x.font = "14px Segoe UI"; x.fillText(WX.error ? "No forecast: " + WX.error : "Loading the forecast…", 20, 40); wgeo = null; $("wpills").innerHTML = ""; return; }
+  const nowTs = Date.now() / 1000, base = Math.floor(nowTs / 900) * 900, today = riga(nowTs).day;
+  const slots = [];                                                              // 15-minute slots of today and tomorrow in Riga time
+  for (let k = -100; k < 300; k++) { const ts = base + k * 900, q = riga(ts); slots.push(Object.assign({ts}, q)); }
+  const days = [...new Set(slots.filter(q => q.day >= today).map(q => q.day))].sort().slice(0, 2);
+  const grid = slots.filter(q => days.includes(q.day)).map(q => Object.assign(q, {i: (q.day === days[0] ? 0 : 96) + q.h * 4 + Math.floor(q.m / 15)}));
+  const step = WX.step_s || 3600, cloudAt = ts => {                              // linear interpolation between the forecast points
+    if (ts < pts[0].ts - step / 2 || ts > pts[pts.length - 1].ts + step / 2) return null;       // no data: the forecast does not cover the past
+    if (ts <= pts[0].ts) return pts[0].cloud; for (let k = 1; k < pts.length; k++) if (ts <= pts[k].ts) return pts[k - 1].cloud + (pts[k].cloud - pts[k - 1].cloud) * (ts - pts[k - 1].ts) / (pts[k].ts - pts[k - 1].ts); return pts[pts.length - 1].cloud; };
+  const dayOf = ts => (WX.days || []).find(d => ts >= d.sunrise - 43200 && ts <= d.sunset + 43200 && Math.abs((d.sunrise + d.sunset) / 2 - ts) < 43200);
+  grid.forEach(q => { const d = dayOf(q.ts + 450); q.cloud = cloudAt(q.ts + 450); q.clear = 0;
+    if (d && q.ts + 450 > d.sunrise && q.ts + 450 < d.sunset) q.clear = Math.sin(Math.PI * (q.ts + 450 - d.sunrise) / (d.sunset - d.sunrise)); q.sun = q.cloud === null ? null : q.clear * (1 - q.cloud / 100); q.sr = d && d.sunrise; q.ss = d && d.sunset; });
+  const L = 44, R = 6, T = 22, B = 18, N = 192, X = i => L + (w - L - R) * i / N, Y = v => T + (h - T - B) * (1 - v / 100);
+  const nowI = (grid.find(q => q.ts === base) || {i: -1}).i + ((nowTs - base) / 900);
+  x.font = "11px Segoe UI"; x.lineWidth = 1; x.strokeStyle = "#1f2c47"; x.fillStyle = "#8a97b3";
+  for (let g = 0; g <= 4; g++) { const v = g * 25, y = Y(v); x.beginPath(); x.moveTo(L, y); x.lineTo(w - R, y); x.stroke(); x.fillText(v + " %", 4, y + 4); }
+  for (let hh = 0; hh <= 48; hh += 3) x.fillText(String(hh % 24).padStart(2, "0"), X(hh * 4) - 6, h - 4);
+  grid.forEach(q => { if (!q.clear) { x.fillStyle = "#05080f"; x.fillRect(X(q.i), T, X(q.i + 1) - X(q.i) + 0.5, h - B - T); } });             // night
+  x.globalAlpha = 0.55; grid.filter(q => q.cloud !== null).forEach(q => { x.fillStyle = "#8a97b3"; const y = Y(q.cloud); x.fillRect(X(q.i), y, X(q.i + 1) - X(q.i) + 0.5, h - B - y); });  // clouds
+  x.globalAlpha = 1;
+  x.beginPath(); let started = false; grid.forEach(q => { const px = X(q.i + 0.5), py = Y(q.clear * 100); started ? x.lineTo(px, py) : (x.moveTo(px, py), started = true); });      // clear sky
+  x.setLineDash([5, 4]); x.strokeStyle = "#fbbf24"; x.lineWidth = 1.5; x.stroke(); x.setLineDash([]);
+  grid.filter(q => q.sun !== null && q.sun > 0).forEach(q => { x.fillStyle = "rgba(251,191,36,.6)"; x.fillRect(X(q.i), Y(q.sun * 100), X(q.i + 1) - X(q.i) + 0.5, Y(0) - Y(q.sun * 100)); });    // expected sun
+  x.beginPath(); started = false; grid.forEach(q => { if (q.sun === null) { started = false; return; } const px = X(q.i + 0.5), py = Y(q.sun * 100); started ? x.lineTo(px, py) : (x.moveTo(px, py), started = true); });
+  x.strokeStyle = "#fbbf24"; x.lineWidth = 2; x.stroke();
+  const gap = grid.filter(q => q.cloud === null && q.i < 96 && q.ts < nowTs); if (gap.length) { x.fillStyle = "#8a97b3"; x.font = "12px Segoe UI"; x.fillText("no forecast for the hours that have passed", X(gap[0].i) + 8, Y(50)); }
+  x.strokeStyle = "#3a4a70"; x.lineWidth = 1; x.beginPath(); x.moveTo(X(96), 0); x.lineTo(X(96), h - B); x.stroke();
+  x.fillStyle = "#e7ecf6"; x.font = "bold 12px Segoe UI"; x.fillText("Today " + grid[0].label, L + 4, 12); const tm = grid.find(q => q.i >= 96); if (tm) x.fillText("Tomorrow " + tm.label, X(96) + 6, 12);
+  if (nowI >= 0) { x.strokeStyle = "#fff"; x.lineWidth = 2; x.beginPath(); x.moveTo(X(nowI), 0); x.lineTo(X(nowI), h - B); x.stroke(); }
+  wgeo = {L, R, N, w, grid: new Map(grid.map(q => [q.i, q]))};
+  // verdict per day
+  const verdict = (name, qs) => { const all = qs.filter(q => q.clear > 0); if (!all.length) return ""; const day = all.filter(q => q.cloud !== null);
+    if (day.length < all.length * 0.6) return `<span class="pill self">${name}: no verdict, the forecast does not cover the hours that have already passed</span>`;
+    const clearSum = day.reduce((a, q) => a + q.clear, 0), yieldPct = day.reduce((a, q) => a + q.sun, 0) / clearSum * 100, sunH = day.reduce((a, q) => a + (1 - q.cloud / 100), 0) / 4, dayH = day.length / 4;
+    const avgCloud = day.reduce((a, q) => a + q.cloud, 0) / day.length, cls = yieldPct >= 60 ? "charge" : yieldPct >= 30 ? "self" : "export", word = yieldPct >= 60 ? "SUNNY" : yieldPct >= 30 ? "PARTLY CLOUDY" : "CLOUDY";
+    const hm = ts => new Date(ts * 1000).toLocaleTimeString("en-GB", {timeZone: "Europe/Riga", hour: "2-digit", minute: "2-digit"});
+    return `<span class="pill ${cls}">${name}: ${word} · about ${sunH.toFixed(1)} h of sun in ${dayH.toFixed(1)} h daylight (${hm(day[0].sr)}–${hm(day[0].ss)}) · clouds ${avgCloud.toFixed(0)} % · solar yield ≈ ${yieldPct.toFixed(0)} % of a clear day</span>`; };
+  $("wpills").innerHTML = verdict("Tomorrow", grid.filter(q => q.i >= 96)) + verdict("Today", grid.filter(q => q.i < 96));
+}
+$("wchart").addEventListener("mousemove", e => { if (!wgeo) return; const rc = $("wchart").getBoundingClientRect(), i = Math.floor((e.clientX - rc.left - wgeo.L) / (wgeo.w - wgeo.L - wgeo.R) * wgeo.N), q = wgeo.grid.get(i);
+  $("whint").textContent = q ? q.cloud === null ? `${q.label}  ${String(q.h).padStart(2, "0")}:${String(q.m).padStart(2, "0")}  →  no forecast data` : `${q.label}  ${String(q.h).padStart(2, "0")}:${String(q.m).padStart(2, "0")}  →  clouds ${q.cloud.toFixed(0)} %${q.clear ? ", expected sun " + (q.sun * 100).toFixed(0) + " % of the clear-sky peak" : ", night"}` : ""; });
+window.addEventListener("resize", drawWeather); if (SHOW_WEATHER) { setInterval(loadWeather, 600000); setInterval(drawWeather, 60000); loadWeather(); }
+
+/* ------------------------------------------------ animated background of the diagram: sun, clouds, rain, snow, night (from the forecast) */
+const bg = $("bg"), bx = bg.getContext("2d"), SKY = {sel: "auto", key: "", clouds: [], drops: [], flakes: [], stars: [], flash: 0, nextFlash: 4, t: 0, state: null};
+const SKY_PRESET = {clear: ["clear", 8, true], partly: ["partly", 50, true], cloudy: ["cloudy", 90, true], rain: ["rain", 95, true], snow: ["snow", 95, true], storm: ["storm", 100, false], night: ["night", 8, false]};
+const SKY_WORD = {clear: "sunny", partly: "sun and clouds", cloudy: "cloudy", rain: "rain", snow: "snow", storm: "thunderstorm", night: "night"};
+function skyState() {
+  if (SKY.sel !== "auto") { const m = SKY_PRESET[SKY.sel]; return {kind: m[0], cloud: m[1], day: m[2], manual: true}; }
+  const pts = WX.points || []; if (!pts.length) return null;
+  const now = Date.now() / 1000; let best = null; pts.forEach(p => { const d = Math.abs(p.ts - now); if (!best || d < best.d) best = {p, d}; });
+  if (best.d > (WX.step_s || 3600) * 1.6) return null;
+  const day = (WX.days || []).some(d => now > d.sunrise && now < d.sunset), c = (best.p.cond || "").toLowerCase(), cloud = best.p.cloud;
+  const kind = c.includes("thunder") ? "storm" : c.includes("snow") ? "snow" : (c.includes("rain") || c.includes("drizzle")) ? "rain" : !day ? "night" : cloud > 70 ? "cloudy" : cloud > 25 ? "partly" : "clear";
+  return {kind, cloud, day};
+}
+function skySeed(w, h, st) {                                       // new random clouds / drops / flakes whenever the state changes
+  const nCl = st.kind === "clear" ? 0 : st.kind === "night" ? Math.round(st.cloud / 100 * 5) : Math.max(2, Math.round(st.cloud / 100 * 8));
+  SKY.clouds = Array.from({length: nCl}, () => ({x: Math.random() * (w + 300) - 150, y: h * (0.04 + Math.random() * 0.4), s: 0.8 + Math.random() * 1.1, v: 6 + Math.random() * 16, a: 0.55 + Math.random() * 0.35}));
+  const nD = st.kind === "storm" ? 220 : st.kind === "rain" ? 120 : 0, nF = st.kind === "snow" ? 140 : 0;
+  SKY.drops = Array.from({length: nD}, () => ({x: Math.random() * w, y: Math.random() * h, l: 10 + Math.random() * 14, v: 520 + Math.random() * 380}));
+  SKY.flakes = Array.from({length: nF}, () => ({x: Math.random() * w, y: Math.random() * h, r: 1.2 + Math.random() * 2.4, v: 24 + Math.random() * 40, p: Math.random() * 6.28}));
+  SKY.stars = Array.from({length: 70}, () => ({x: Math.random() * w, y: Math.random() * h * 0.7, r: 0.5 + Math.random() * 1.2, p: Math.random() * 6.28}));
+}
+function puff(x, y, s, alpha, rgb) {                               // one cloud = a union of circles, filled once (no darker overlaps)
+  bx.globalAlpha = alpha; bx.fillStyle = rgb; bx.beginPath();
+  [[0, 0, 28], [30, -12, 34], [64, -2, 30], [22, 10, 24], [48, 12, 26], [-16, 8, 20], [84, 10, 20]].forEach(([dx, dy, r]) => { bx.moveTo(x + dx * s + r * s, y + dy * s); bx.arc(x + dx * s, y + dy * s, r * s, 0, 6.2832); });
+  bx.fill(); bx.globalAlpha = 1;
+}
+function setIcon(dark) { ["", "s2-"].forEach(p => { $(p + "icon-sun").setAttribute("display", dark ? "none" : "inline"); $(p + "icon-moon").setAttribute("display", dark ? "inline" : "none"); }); }
+function drawSky(dt) {
+  if (!SHOW_WEATHER) return;                                      // the animated sky and the icon follow the forecast, so only the full page has them
+  const w = bg.clientWidth, h = bg.clientHeight; if (!w) return;
+  if (bg.width !== Math.round(w * (devicePixelRatio || 1)) || bg.height !== Math.round(h * (devicePixelRatio || 1))) { bg.width = Math.round(w * (devicePixelRatio || 1)); bg.height = Math.round(h * (devicePixelRatio || 1)); SKY.key = ""; }
+  const st = skyState(); SKY.state = st; if (st) setIcon(st.kind === "night" || st.kind === "storm" || !st.day); bx.setTransform(bg.width / w, 0, 0, bg.height / h, 0, 0); bx.clearRect(0, 0, w, h);
+  $("skyinfo").textContent = st ? (st.manual ? "demo: " : "now: ") + SKY_WORD[st.kind] + (st.manual ? "" : ` (clouds ${Math.round(st.cloud)} %)`) : "no forecast yet";
+  if (!st) return;
+  const key = st.kind + Math.round(st.cloud / 20); if (key !== SKY.key) { SKY.key = key; skySeed(w, h, st); }
+  SKY.t += dt; const t = SKY.t, K = st.kind, night = K === "night" || K === "storm" || !st.day, wet = K === "rain" || K === "snow" || K === "storm";
+  const top = {clear: "#1d4a82", partly: "#1a3558", cloudy: "#1b2536", rain: "#141c2b", snow: "#1d2638", storm: "#0d1220", night: "#070b16"}[K];
+  const g = bx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, top); g.addColorStop(1, "#0e1627"); bx.fillStyle = g; bx.fillRect(0, 0, w, h);
+  if (night) SKY.stars.forEach(s => { bx.globalAlpha = (0.25 + 0.5 * Math.abs(Math.sin(t * 0.8 + s.p))) * (wet ? 0.3 : 1) * (1 - st.cloud / 140); bx.fillStyle = "#dbe7ff"; bx.beginPath(); bx.arc(s.x, s.y, s.r, 0, 6.2832); bx.fill(); });
+  bx.globalAlpha = 1;
+  const cx = w * 0.86, cy = h * 0.27, R = h * 0.055, hide = Math.min(1, st.cloud / 95) * 0.75 + (wet ? 0.2 : 0);          // the sun or the moon, dimmer behind clouds
+  if (!night) {                                                    // shining sun: pulsing glow and slowly turning rays
+    const gl = bx.createRadialGradient(cx, cy, R * 0.5, cx, cy, h * 0.42), pulse = 0.85 + 0.15 * Math.sin(t * 1.3);
+    gl.addColorStop(0, `rgba(255,214,102,${0.55 * pulse * (1 - hide)})`); gl.addColorStop(1, "rgba(255,214,102,0)"); bx.fillStyle = gl; bx.fillRect(0, 0, w, h);
+    bx.save(); bx.translate(cx, cy); bx.rotate(t * 0.12); bx.strokeStyle = `rgba(255,222,120,${0.45 * (1 - hide)})`; bx.lineWidth = 3; bx.lineCap = "round";
+    for (let k = 0; k < 16; k++) { bx.rotate(6.2832 / 16); const r1 = R * 1.5, r2 = R * (2.1 + 0.5 * (k % 2) + 0.15 * Math.sin(t * 2 + k)); bx.beginPath(); bx.moveTo(r1, 0); bx.lineTo(r2, 0); bx.stroke(); }
+    bx.restore(); bx.globalAlpha = 1 - hide * 0.8; bx.fillStyle = "#ffd966"; bx.beginPath(); bx.arc(cx, cy, R, 0, 6.2832); bx.fill(); bx.globalAlpha = 1;
+  } else if (K === "night") {                                      // moon with a soft glow
+    const gl = bx.createRadialGradient(cx, cy, R * 0.6, cx, cy, h * 0.3); gl.addColorStop(0, `rgba(180,200,255,${0.35 * (1 - hide)})`); gl.addColorStop(1, "rgba(180,200,255,0)"); bx.fillStyle = gl; bx.fillRect(0, 0, w, h);
+    bx.globalAlpha = 1 - hide * 0.85; bx.fillStyle = "#e9eef7"; bx.beginPath(); bx.arc(cx, cy, R, 0, 6.2832); bx.fill();
+    bx.fillStyle = top; bx.beginPath(); bx.arc(cx + R * 0.45, cy - R * 0.2, R * 0.92, 0, 6.2832); bx.fill(); bx.globalAlpha = 1;
+  }
+  const tone = wet ? "rgb(95,108,132)" : night ? "rgb(70,82,108)" : K === "cloudy" ? "rgb(150,162,184)" : "rgb(205,216,235)";
+  SKY.clouds.forEach(c => { c.x += c.v * dt; if (c.x > w + 160) c.x = -260 * c.s; puff(c.x, c.y, c.s, c.a * (wet ? 0.9 : 0.75), tone); });
+  if (SKY.drops.length) { bx.strokeStyle = "rgba(170,200,240,.5)"; bx.lineWidth = 1.3; bx.beginPath();
+    SKY.drops.forEach(d => { d.y += d.v * dt; d.x += d.v * 0.18 * dt; if (d.y > h) { d.y = -20; d.x = Math.random() * w; } if (d.x > w) d.x -= w; bx.moveTo(d.x, d.y); bx.lineTo(d.x - d.l * 0.18, d.y - d.l); }); bx.stroke(); }
+  if (SKY.flakes.length) { bx.fillStyle = "rgba(240,246,255,.85)"; SKY.flakes.forEach(f => { f.y += f.v * dt; f.x += Math.sin(t * 1.2 + f.p) * 14 * dt; if (f.y > h + 5) { f.y = -5; f.x = Math.random() * w; } bx.beginPath(); bx.arc(f.x, f.y, f.r, 0, 6.2832); bx.fill(); }); }
+  if (K === "storm") { SKY.nextFlash -= dt; if (SKY.nextFlash < 0) { SKY.flash = 1; SKY.nextFlash = 3 + Math.random() * 6; } if (SKY.flash > 0) { bx.fillStyle = `rgba(220,230,255,${SKY.flash * 0.28})`; bx.fillRect(0, 0, w, h); SKY.flash = Math.max(0, SKY.flash - dt * 3.5); } }
+}
+$("sky").onchange = e => { SKY.sel = e.target.value; SKY.key = ""; };
+try { const qs = new URLSearchParams(location.search).get("sky"); if (qs && SKY_PRESET[qs]) { SKY.sel = qs; $("sky").value = qs; } } catch (e) {}      // ?sky=rain opens the page in that state
+
+/* ------------------------------------------------ data */
+function ingest(d) {
+  BAT_K = d.bat_k || 1; data = d; const S = d.samples; S.forEach(scaleBattery);
+  S.forEach((s, i) => { if (!s.mode) { s.mode = classify(smooth(S, i)); } });
+  // log: mode changes (stable for two readings), marks written by inverter_live.py, schedule changes
+  for (let i = logged; i < S.length; i++) { const s = S[i], key = s.mode.fine;
+    if (key === pendKey) pendN++; else { pendKey = key; pendN = 1; }
+    if (pendN === 2 && key !== lastKey) { addLog(hms(new Date((d.t0 + s.t) * 1000)) + "  " + s.mode.label + (s.prio !== undefined ? "  (" + (PRIO[s.prio] || s.prio) + ")" : ""), lastKey ? "new" : ""); lastKey = key; } }
+  logged = S.length;
+  for (; seenEvents < d.events.length; seenEvents++) { const e = d.events[seenEvents]; addLog(hms(new Date((d.t0 + e.t) * 1000)) + "  " + e.label, "new"); }
+}
+async function tick() {
+  let d; try { d = await (await fetch("/api/data", {cache: "no-store"})).json(); }
+  catch (e) { $("status").textContent = "no connection to inverter_live.py"; return; }
+  ingest(d); if (frozen === null) render();
+}
+$("bplay").onclick = () => { frozen = frozen === null ? data.samples.length : null; $("bplay").textContent = frozen === null ? "Freeze" : "Resume"; render(); };
+$("swin").onchange = e => { winS = parseInt(e.target.value, 10); render(); };
+let prev = performance.now();
+function frame(now) { const dt = Math.min(0.1, (now - prev) / 1000); prev = now; drawSky(dt); const S = data.samples; moveParticles(dt, frozen !== null ? null : S[S.length - 1]); requestAnimationFrame(frame); }
+setInterval(tick, 1000); tick(); requestAnimationFrame(frame);
+</script>
+</body>
+</html>
